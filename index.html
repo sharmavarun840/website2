@@ -7,110 +7,52 @@
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
   <style>
     body {
-      margin: 0;
-      font-family: 'Open Sans', sans-serif;
-      background: #fff;
-      color: #333;
-    }
+  margin: 0;
+  font-family: 'Open Sans', sans-serif;
+  background: #fff;
+  color: #333;
+}
 
-    header {
-      text-align: center;
-      padding: 2rem 1rem 1rem;
-    }
+header {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+}
 
-    header h1 {
-      font-size: 2.5rem;
-      margin-bottom: 0.3rem;
-    }
+header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.3rem;
+}
 
-    header h2 {
-      font-weight: normal;
-      color: #999;
-      font-size: 1.2rem;
-    }
+header h2 {
+  font-weight: normal;
+  color: #999;
+  font-size: 1.2rem;
+}
 
-    nav {
-      background: linear-gradient(to right, #002D62, #005B96);
-      text-align: center;
-      padding: 0.8rem 0;
-    }
+nav {
+  background: linear-gradient(to right, #002D62, #005B96);
+  text-align: center;
+  padding: 0.8rem 0;
+}
 
-    nav a, nav span.home {
-      color: white;
-      text-decoration: none;
-      margin: 0 1rem;
-      font-weight: bold;
-    }
+nav a,
+nav span.home {
+  color: white;
+  text-decoration: none;
+  margin: 0 1rem;
+  font-weight: bold;
+}
 
-    nav a:hover {
-      text-decoration: underline;
-    }
+nav a:hover {
+  text-decoration: underline;
+}
 
-    nav span.home {
-      color: #ADD8E6 !important;
-    }
+nav span.home {
+  color: #ADD8E6 !important;
+}
 
-    .container {
-      max-width: 960px;
-      margin: auto;
-      padding: 2rem;
-    }
-
-    h2 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-      text-align: center;
-    }
-
-    ul.article-links {
-      list-style: none;
-      padding: 0;
-      text-align: center;
-      font-size: 1.2rem;
-    }
-
-    ul.article-links li {
-      margin: 1.5rem 0;
-    }
-
-    ul.article-links a {
-      text-decoration: none;
-      color: #002D62;
-      font-weight: bold;
-    }
-
-    ul.article-links a:hover {
-      color: #005B96;
-      text-decoration: underline;
-    }
-
-    footer {
-      background-color: #f5f5f5;
-      padding: 1.5rem;
-      text-align: center;
-    }
-
-    .footer-links {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 25px;
-      flex-wrap: wrap;
-      font-size: 16px;
-    }
-
-    .footer-links a {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      color: black;
-    }
-
-    .footer-links img {
-      margin-right: 8px;
-    }
-    /* Dropdown Menu */
 /* TOOLS DROPDOWN */
+
 .dropdown {
   display: inline-block;
   position: relative;
@@ -133,8 +75,7 @@
   background: white;
   border-radius: 12px;
 
-  box-shadow:
-    0 10px 25px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
 
   overflow: hidden;
   z-index: 1000;
@@ -145,10 +86,8 @@
 .dropdown-content a {
   display: block;
   padding: 15px 20px;
-
   color: #002D62;
   font-weight: 600;
-
   text-decoration: none;
   transition: 0.3s;
 }
@@ -171,6 +110,132 @@
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* MAIN CONTENT */
+
+.main-content {
+  display: flex;
+  gap: 50px;
+  max-width: 1500px;
+  margin: 50px auto;
+  padding: 0 40px;
+  align-items: flex-start;
+}
+
+/* LEFT COLUMN */
+
+.articles-section {
+  flex: 0.85;
+}
+
+.article-links {
+  margin: 0;
+  padding-left: 35px;
+  text-align: left;
+  font-size: 1.25rem;
+}
+
+.article-links li {
+  margin-bottom: 28px;
+  line-height: 1.7;
+}
+
+.article-links a {
+  text-decoration: none;
+  color: #002D62;
+  font-weight: 600;
+}
+
+.article-links a:hover {
+  color: #005B96;
+  text-decoration: underline;
+}
+
+/* RIGHT COLUMN */
+
+.research-section {
+  flex: 1.15;
+}
+
+.articles-section h2,
+.research-section h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 35px;
+  color: #222;
+}
+
+.research-image {
+  width: 100%;
+  max-width: 850px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.research-caption {
+  margin-top: 20px;
+  font-size: 15px;
+  color: #555;
+  line-height: 1.8;
+  text-align: justify;
+}
+
+/* FOOTER */
+
+footer {
+  background-color: #f5f5f5;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 25px;
+  flex-wrap: wrap;
+  font-size: 16px;
+}
+
+.footer-links a {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: black;
+}
+
+.footer-links img {
+  margin-right: 8px;
+}
+
+/* MOBILE */
+
+@media (max-width: 900px) {
+
+  .main-content {
+    flex-direction: column;
+    gap: 30px;
+    padding: 0 20px;
+  }
+
+  .articles-section,
+  .research-section {
+    width: 100%;
+  }
+
+  .articles-section h2,
+  .research-section h2 {
+    text-align: center;
+  }
+
+  .article-links {
+    padding-left: 25px;
+  }
+
+  .research-image {
+    width: 100%;
   }
 }
   </style>
@@ -220,36 +285,70 @@
 
   </nav>
 
-  <div class="container">
+  <div class="main-content">
+
+  <!-- LEFT COLUMN -->
+  <div class="articles-section">
+
     <h2>Featured Articles</h2>
-    <ul class="article-links">
+
+    <ol class="article-links">
+
       <li>
         <a href="genghis.html" target="_blank">
           The Genetic Mystery of the legend Genghis Khan's Family
         </a>
       </li>
+
       <li>
         <a href="doppelganger.html" target="_blank">
           The Science Behind Doppelgängers
         </a>
       </li>
+
       <li>
         <a href="100K genome.html" target="_blank">
-         The 100K GenomeAsia Project: What have we Learned So for ?
+          The 100K GenomeAsia Project: What have we Learned So Far?
         </a>
       </li>
+
       <li>
         <a href="CardioRisqRE.html" target="_blank">
-         CardioRisqRE: Precision Cardiac Intelligence
+          CardioRisqRE: Precision Cardiac Intelligence
         </a>
       </li>
+
       <li>
         <a href="Dietary_Crisis.html" target="_blank">
           India's Dietary Crisis: How Our Carbohydrate Rich Plates Are Fueling a Health Emergency
         </a>
       </li>
-    </ul>
-  </div><br><br><br><br><br><br><br><br><br><br><br>
+
+    </ol>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="research-section">
+
+    <h2>Research Spotlight</h2>
+
+    <a href="research.html">
+      <img src="PCA_BEFORE_QC_outliers_highlighted_page-0001.jpg"
+           alt="Population Genomics PCA Analysis"
+           class="research-image">
+    </a>
+
+    <p class="research-caption">
+Population genomics analysis performed using Principal Component Analysis (PCA)
+to investigate genetic structure, case-control clustering, and identify sample
+outliers prior to downstream association analyses. This work reflects my
+research interests in human genetics, bioinformatics, and precision medicine.
+</p>
+
+  </div>
+
+</div>
 
   <footer>
     <div class="footer-links">
