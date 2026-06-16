@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AD Therapeutic Target Predictor · ML Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--bg4:#252d3d;
+  --border:#2e3a52;--border2:#3d4f6e;
+  --text:#e8eaf0;--text2:#9aa5be;--text3:#6b7899;
+  --purple:#7c6ff7;--purple2:#a59bf9;--purple-bg:#1e1a3d;
+  --teal:#2dd4bf;--teal-bg:#0d2e2a;
+  --coral:#f97066;--coral-bg:#2e1a18;
+  --amber:#fbbf24;--amber-bg:#2e2510;
+  --blue:#60a5fa;--blue-bg:#0f1e35;
+  --green:#4ade80;--green-bg:#0e2818;
+  --pink:#f472b6;--pink-bg:#2e1025;
+  --radius:10px;--radius-sm:6px;--shadow:0 4px 24px rgba(0,0,0,.4);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+h1{font-size:22px;font-weight:600}h2{font-size:17px;font-weight:600}h3{font-size:14px;font-weight:600}
+a{color:var(--purple2);text-decoration:none}
+/* LAYOUT */
+.app{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.main{padding:24px;overflow-y:auto}
+/* SIDEBAR HEADER */
+.sidebar-logo{display:flex;align-items:center;gap:10px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.logo-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--purple),var(--teal));display:flex;align-items:center;justify-content:center;font-size:18px}
+.sidebar-logo h1{font-size:15px;line-height:1.3;color:var(--text)}
+.sidebar-logo p{font-size:11px;color:var(--text3);margin-top:2px}
+/* UPLOAD CARDS */
+.upload-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:10px}
+.file-card{border:1px dashed var(--border2);border-radius:var(--radius-sm);padding:10px 12px;cursor:pointer;transition:all .2s;position:relative;margin-bottom:6px}
+.file-card:hover{border-color:var(--purple);background:var(--purple-bg)}
+.file-card.loaded{border-style:solid;border-color:var(--teal);background:var(--teal-bg)}
+.file-card.loaded .fc-status{color:var(--teal)}
+.file-card.error{border-color:var(--coral);background:var(--coral-bg)}
+.file-card input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.fc-top{display:flex;align-items:center;gap:8px}
+.fc-icon{font-size:16px}
+.fc-label{font-size:12px;font-weight:600;color:var(--text)}
+.fc-status{font-size:11px;color:var(--text3);margin-top:3px}
+.fc-rows{font-size:10px;color:var(--text3)}
+/* CONFIG */
+.config-panel{background:var(--bg3);border-radius:var(--radius-sm);padding:12px}
+.config-panel h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:10px}
+.config-row{margin-bottom:10px}
+.config-row label{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px}
+.config-row label span{color:var(--purple2);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--purple);height:4px}
+.model-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.model-toggle{padding:6px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;text-align:center;color:var(--text3);background:transparent;transition:all .2s}
+.model-toggle.active{border-color:var(--purple);background:var(--purple-bg);color:var(--purple2);font-weight:600}
+/* RUN BUTTON */
+.run-btn{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--purple),#5046e4);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:auto}
+.run-btn:hover{filter:brightness(1.15);transform:translateY(-1px)}
+.run-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.run-btn.running{animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+/* MAIN CONTENT */
+.main-header{margin-bottom:20px}
+.main-header h2{font-size:20px;margin-bottom:6px}
+.main-header p{font-size:13px;color:var(--text2);max-width:700px;line-height:1.6}
+/* TABS */
+.tab-bar{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab-btn{padding:9px 16px;border:none;background:transparent;color:var(--text3);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;border-radius:var(--radius-sm) var(--radius-sm) 0 0}
+.tab-btn:hover{color:var(--text);background:var(--bg3)}
+.tab-btn.active{color:var(--purple2);border-bottom-color:var(--purple2);font-weight:600}
+.tab-panel{display:none}.tab-panel.active{display:block}
+/* METRIC CARDS */
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.metric-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.metric-card .mc-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.metric-card .mc-val{font-size:26px;font-weight:700}
+.metric-card .mc-sub{font-size:11px;color:var(--text3);margin-top:4px}
+/* CHART CARDS */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.chart-card h3{font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text2)}
+.chart-wrap{position:relative;height:220px}
+/* TABLE */
+.table-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.search-box{flex:1;min-width:180px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none}
+.search-box:focus{border-color:var(--purple)}
+.select-box{padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;cursor:pointer}
+.export-btn{padding:7px 14px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text2);font-size:12px;cursor:pointer;transition:all .2s}
+.export-btn:hover{border-color:var(--teal);color:var(--teal)}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{background:var(--bg4);position:sticky;top:0;z-index:1}
+th{padding:10px 12px;text-align:left;color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--purple2)}
+th.sort-asc::after{content:' ↑'}th.sort-desc::after{content:' ↓'}
+td{padding:9px 12px;border-top:1px solid var(--border);white-space:nowrap}
+tr:hover td{background:var(--bg4)}
+.gene-name{font-weight:700;color:var(--purple2);font-size:13px}
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600}
+.b-os{background:var(--teal-bg);color:var(--teal)}
+.b-gm{background:var(--blue-bg);color:var(--blue)}
+.b-ad{background:var(--purple-bg);color:var(--purple2)}
+.b-t2d{background:var(--amber-bg);color:var(--amber)}
+.b-dr{background:var(--green-bg);color:var(--green)}
+.b-up{background:var(--purple-bg);color:var(--purple2)}
+.b-dn{background:var(--coral-bg);color:var(--coral)}
+.score-bar{display:inline-flex;align-items:center;gap:6px}
+.bar-bg{width:60px;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;display:inline-block}
+.bar-fill{height:100%;border-radius:3px}
+/* TOP TARGETS */
+.target-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+.target-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:16px;transition:border-color .2s}
+.target-card:hover{border-color:var(--purple)}
+.target-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.tc-gene{font-size:18px;font-weight:700;color:var(--purple2)}
+.tc-rank{font-size:11px;color:var(--text3);background:var(--bg4);padding:3px 8px;border-radius:10px}
+.tc-score-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.tc-score-label{font-size:11px;color:var(--text3);min-width:80px}
+.tc-score-bar{flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden}
+.tc-score-val{font-size:12px;font-weight:600;min-width:40px;text-align:right}
+.tc-badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.tc-desc{font-size:12px;color:var(--text2);line-height:1.6;border-top:1px solid var(--border);padding-top:10px;margin-top:6px}
+.tc-fc{font-size:11px;padding:2px 8px;border-radius:6px}
+/* MODEL COMPARISON */
+.model-table{width:100%}
+.model-row{display:grid;grid-template-columns:120px 1fr 80px;gap:12px;align-items:center;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:4px}
+.model-row:hover{background:var(--bg4)}
+.model-name{font-size:12px;font-weight:600}
+.model-bar-outer{height:10px;background:var(--bg4);border-radius:5px;overflow:hidden}
+.model-bar-inner{height:100%;border-radius:5px}
+/* VOLCANO */
+#volcanoCanvas{cursor:crosshair}
+/* PROGRESS */
+.progress-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;margin-bottom:16px}
+.progress-bar-outer{height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin:12px 0}
+.progress-bar-inner{height:100%;background:linear-gradient(90deg,var(--purple),var(--teal));border-radius:3px;transition:width .3s}
+.progress-msg{font-size:13px;color:var(--text2)}
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-state .es-icon{font-size:48px;margin-bottom:16px}
+.empty-state p{font-size:14px;line-height:1.7;max-width:400px;margin:0 auto}
+/* ALERT */
+.alert{padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:12px;display:flex;gap:8px;align-items:flex-start}
+.alert-info{background:var(--blue-bg);border:1px solid #1e3a5f;color:var(--blue)}
+.alert-warn{background:var(--amber-bg);border:1px solid #4a3a10;color:var(--amber)}
+.alert-success{background:var(--green-bg);border:1px solid #1a4a28;color:var(--green)}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+/* TOOLTIP */
+.tooltip{position:fixed;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;pointer-events:none;z-index:9999;max-width:260px;line-height:1.5;display:none;box-shadow:var(--shadow)}
+/* FEATURE IMPORTANCE */
+.fi-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.fi-label{font-size:12px;color:var(--text2);min-width:160px}
+.fi-bar-outer{flex:1;height:14px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.fi-bar-inner{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:6px;font-size:10px;font-weight:600;color:#fff}
+.fi-val{font-size:11px;color:var(--text3);min-width:36px;text-align:right}
+/* STATUS BAR */
+.status-bar{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);padding:6px 20px;font-size:11px;color:var(--text3);display:flex;gap:16px;z-index:100}
+.status-bar span{color:var(--purple2)}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- ══════════ SIDEBAR ══════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">🧠</div>
+    <div>
+      <h1>AD Target Predictor</h1>
+      <p>ML · Oxidative Stress · Glucose</p>
+    </div>
+  </div>
+
+  <!-- FILE UPLOADS -->
+  <div class="upload-section">
+    <h3>Upload Datasets</h3>
+    <div id="file-cards"></div>
+  </div>
+
+  <!-- THRESHOLDS -->
+  <div class="config-panel">
+    <h3>Thresholds</h3>
+    <div class="config-row">
+      <label>padj cutoff <span id="padj-val">0.05</span></label>
+      <input type="range" id="padj-slider" min="0.001" max="0.1" step="0.001" value="0.05" oninput="document.getElementById('padj-val').textContent=parseFloat(this.value).toFixed(3)">
+    </div>
+    <div class="config-row">
+      <label>|log₂FC| min <span id="lfc-val">0.0</span></label>
+      <input type="range" id="lfc-slider" min="0" max="3" step="0.1" value="0" oninput="document.getElementById('lfc-val').textContent=parseFloat(this.value).toFixed(1)">
+    </div>
+    <div class="config-row">
+      <label>Top N targets <span id="topn-val">50</span></label>
+      <input type="range" id="topn-slider" min="10" max="200" step="5" value="50" oninput="document.getElementById('topn-val').textContent=this.value">
+    </div>
+    <div class="config-row" style="display:flex;align-items:center;gap:8px;margin-top:4px">
+      <input type="checkbox" id="druggable-only" style="accent-color:var(--purple)">
+      <label for="druggable-only" style="font-size:12px;color:var(--text2);cursor:pointer">Druggable targets only</label>
+    </div>
+    <div class="config-row" style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="deg-only" checked style="accent-color:var(--purple)">
+      <label for="deg-only" style="font-size:12px;color:var(--text2);cursor:pointer">DEG-confirmed only</label>
+    </div>
+  </div>
+
+  <!-- MODEL SELECTION -->
+  <div class="config-panel">
+    <h3>Active Models</h3>
+    <div class="model-grid" id="model-toggles"></div>
+  </div>
+
+  <!-- CUSTOM WEIGHTS -->
+  <div class="config-panel" id="weight-panel">
+    <h3>Custom Weights</h3>
+    <div id="weight-sliders"></div>
+  </div>
+
+  <!-- RUN -->
+  <button class="run-btn" id="run-btn" onclick="runAnalysis()">▶ Run Analysis</button>
+</aside>
+
+<!-- ══════════ MAIN ══════════ -->
+<main class="main">
+  <div class="main-header">
+    <h2>Alzheimer's Disease Therapeutic Target Discovery</h2>
+    <p>Upload all six datasets, configure your ML models, and run the full analysis pipeline to identify oxidative stress and glucose metabolism genes as potential drug targets in AD.</p>
+  </div>
+
+  <!-- PROGRESS (hidden by default) -->
+  <div class="progress-wrap" id="progress-wrap" style="display:none">
+    <div class="progress-msg" id="progress-msg">Initialising…</div>
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="progress-bar" style="width:0%"></div></div>
+    <div style="font-size:11px;color:var(--text3)" id="progress-detail"></div>
+  </div>
+
+  <!-- EMPTY STATE -->
+  <div class="empty-state" id="empty-state">
+    <div class="es-icon">🔬</div>
+    <h3 style="margin-bottom:10px;color:var(--text2)">Ready to analyse</h3>
+    <p>Upload your 6 datasets in the sidebar (GEO expression, 4 GWAS files, OpenTargets), configure thresholds, select ML models, then click <strong>Run Analysis</strong>.</p>
+    <div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:480px;margin-left:auto;margin-right:auto;text-align:left">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px">
+        <div style="font-size:11px;color:var(--teal);font-weight:600;margin-bottom:4px">7 ML Models</div>
+        <div style="font-size:11px;color:var(--text3)">WMSS · ZSA · Borda · EC · LogReg · PU-Boot · Ensemble</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px">
+        <div style="font-size:11px;color:var(--purple2);font-weight:600;margin-bottom:4px">22 Features</div>
+        <div style="font-size:11px;color:var(--text3)">GEO + 4 GWAS + OpenTargets druggability</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px">
+        <div style="font-size:11px;color:var(--amber);font-weight:600;margin-bottom:4px">Full export</div>
+        <div style="font-size:11px;color:var(--text3)">CSV download of all predictions and scores</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS (hidden until analysis runs) -->
+  <div id="results-area" style="display:none">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="showTab('dashboard')">📊 Dashboard</button>
+      <button class="tab-btn" onclick="showTab('predictions')">🔢 All Predictions</button>
+      <button class="tab-btn" onclick="showTab('targets')">🎯 Top Targets</button>
+      <button class="tab-btn" onclick="showTab('volcano')">🌋 Volcano Plot</button>
+      <button class="tab-btn" onclick="showTab('features')">⚖️ Feature Importance</button>
+      <button class="tab-btn" onclick="showTab('models')">🤖 Model Comparison</button>
+    </div>
+
+    <!-- DASHBOARD TAB -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="metric-grid" id="metric-grid"></div>
+      <div class="chart-grid">
+        <div class="chart-card"><h3>Score Distribution (Ensemble)</h3><div class="chart-wrap"><canvas id="distChart"></canvas></div></div>
+        <div class="chart-card"><h3>Top 20 Targets by Ensemble Score</h3><div class="chart-wrap"><canvas id="top20Chart"></canvas></div></div>
+        <div class="chart-card"><h3>Evidence Source Overlap</h3><div class="chart-wrap"><canvas id="overlapChart"></canvas></div></div>
+        <div class="chart-card"><h3>DEG Expression Profile</h3><div class="chart-wrap"><canvas id="degChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- PREDICTIONS TABLE TAB -->
+    <div class="tab-panel" id="tab-predictions">
+      <div class="table-toolbar">
+        <input class="search-box" id="search-box" placeholder="Search gene symbol…" oninput="filterTable()">
+        <select class="select-box" id="filter-source" onchange="filterTable()">
+          <option value="all">All genes</option>
+          <option value="os">Oxidative stress GWAS</option>
+          <option value="gm">Glucose metabolism GWAS</option>
+          <option value="ad">AD GWAS</option>
+          <option value="t2d">T2D GWAS</option>
+          <option value="pocket">Has druggable pocket</option>
+          <option value="multi">≥3 evidence sources</option>
+        </select>
+        <select class="select-box" id="sort-col" onchange="sortTable(this.value)">
+          <option value="ensemble">Sort: Ensemble</option>
+          <option value="wmss">Sort: WMSS</option>
+          <option value="logReg">Sort: LogReg</option>
+          <option value="borda">Sort: Borda</option>
+          <option value="evidence">Sort: Evidence</option>
+          <option value="padj">Sort: padj</option>
+          <option value="abs_lfc">Sort: |log2FC|</option>
+          <option value="globalScore">Sort: OT Score</option>
+        </select>
+        <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table id="pred-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('rank')">#</th>
+              <th onclick="sortTable('gene')">Gene</th>
+              <th onclick="sortTable('log2FC')">log2FC</th>
+              <th onclick="sortTable('padj')">padj</th>
+              <th>Sources</th>
+              <th onclick="sortTable('globalScore')">OT Score</th>
+              <th onclick="sortTable('wmss')">WMSS</th>
+              <th onclick="sortTable('zsa')">ZSA</th>
+              <th onclick="sortTable('borda')">Borda</th>
+              <th onclick="sortTable('evidence')">Evidence</th>
+              <th onclick="sortTable('logReg')">LogReg</th>
+              <th onclick="sortTable('puBoot')">PU-Boot</th>
+              <th onclick="sortTable('ensemble')">Ensemble</th>
+              <th>Druggable</th>
+            </tr>
+          </thead>
+          <tbody id="pred-tbody"></tbody>
+        </table>
+      </div>
+      <div id="table-footer" style="font-size:11px;color:var(--text3);margin-top:8px;text-align:right"></div>
+    </div>
+
+    <!-- TOP TARGETS TAB -->
+    <div class="tab-panel" id="tab-targets">
+      <div class="alert alert-info" style="margin-bottom:16px">
+        <span>ℹ</span>
+        <span>Candidates are ranked by ensemble score. Badges indicate the evidence streams each gene appears in. Druggable = hasPocket or hasSmallMoleculeBinder in OpenTargets.</span>
+      </div>
+      <div class="target-grid" id="target-grid"></div>
+    </div>
+
+    <!-- VOLCANO TAB -->
+    <div class="tab-panel" id="tab-volcano">
+      <div class="alert alert-info" style="margin-bottom:16px">
+        <span>ℹ</span>
+        <span>Hover over points to see gene details. <strong style="color:var(--teal)">Teal</strong> = oxidative stress GWAS. <strong style="color:var(--blue)">Blue</strong> = glucose metabolism GWAS. <strong style="color:var(--purple2)">Purple</strong> = AD GWAS. <strong style="color:var(--text3)">Grey</strong> = other DEGs.</span>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+        <canvas id="volcanoCanvas" style="width:100%;height:500px"></canvas>
+      </div>
+    </div>
+
+    <!-- FEATURE IMPORTANCE TAB -->
+    <div class="tab-panel" id="tab-features">
+      <div class="chart-grid" style="grid-template-columns:1fr 1fr">
+        <div class="chart-card" style="grid-column:1/-1">
+          <h3>Feature Importance (across active models)</h3>
+          <div id="fi-bars" style="margin-top:8px"></div>
+        </div>
+        <div class="chart-card">
+          <h3>WMSS Weight Contribution</h3>
+          <div class="chart-wrap"><canvas id="wmssPieChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Logistic Regression Coefficients</h3>
+          <div class="chart-wrap"><canvas id="lrCoefChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODEL COMPARISON TAB -->
+    <div class="tab-panel" id="tab-models">
+      <div class="chart-grid" style="grid-template-columns:1fr 1fr">
+        <div class="chart-card">
+          <h3>Model Score Correlation (top 200)</h3>
+          <div class="chart-wrap"><canvas id="correlChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Rank Agreement — Top 50 Targets</h3>
+          <div class="chart-wrap"><canvas id="rankChart"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-card" style="margin-top:16px">
+        <h3>Per-model performance summary</h3>
+        <div id="model-summary-table" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </div><!-- /results-area -->
+</main>
+</div><!-- /app -->
+
+<div class="tooltip" id="tooltip"></div>
+<div class="status-bar" id="status-bar">
+  <span>Status: <span id="sb-status">Waiting for datasets</span></span>
+  <span>Genes: <span id="sb-genes">—</span></span>
+  <span>DEGs: <span id="sb-degs">—</span></span>
+  <span>Candidates: <span id="sb-cands">—</span></span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════════════════════
+const FILE_CONFIG = [
+  {key:'geo',      label:'GEO Expression',          hint:'GSE125583 · AD vs controls',      icon:'🧬', color:'#7c6ff7'},
+  {key:'gwas_ad',  label:'GWAS — Alzheimer\'s',      hint:'MONDO_0004975 associations',      icon:'🔬', color:'#f97066'},
+  {key:'gwas_gm',  label:'GWAS — Glucose Metabolism',hint:'Brain glucose metabolism GWAS',   icon:'🍬', color:'#60a5fa'},
+  {key:'gwas_osb', label:'GWAS — Oxidative Stress',  hint:'EFO_0801080 associations',        icon:'⚡', color:'#2dd4bf'},
+  {key:'gwas_t2d', label:'GWAS — Type 2 Diabetes',   hint:'MONDO_0005148 associations',      icon:'💉', color:'#fbbf24'},
+  {key:'opentargets',label:'OpenTargets AD',         hint:'OT-MONDO_0004975 targets',        icon:'🎯', color:'#f472b6'},
+];
+
+const MODELS = [
+  {key:'wmss',     label:'WMSS',     desc:'Weighted Multi-Source Score'},
+  {key:'zsa',      label:'ZSA',      desc:'Z-score Aggregation'},
+  {key:'borda',    label:'Borda',    desc:'Borda Count Rank Aggregation'},
+  {key:'evidence', label:'Evidence', desc:'Evidence Counting'},
+  {key:'logReg',   label:'LogReg',   desc:'Logistic Regression (GD)'},
+  {key:'puBoot',   label:'PU-Boot',  desc:'PU Bootstrap Learning'},
+  {key:'ensemble', label:'Ensemble', desc:'Weighted Ensemble (all models)'},
+];
+
+const WMSS_WEIGHTS = {
+  ot_score:        {label:'OT Global Score',           default:0.30, color:'#f472b6'},
+  is_deg:          {label:'Is DEG (padj<cutoff)',       default:0.20, color:'#7c6ff7'},
+  is_os_gm:        {label:'OS/GM GWAS member',         default:0.20, color:'#2dd4bf'},
+  in_gwas_ad:      {label:'In AD GWAS',                default:0.15, color:'#f97066'},
+  in_gwas_t2d:     {label:'In T2D GWAS',               default:0.10, color:'#fbbf24'},
+  abs_lfc_norm:    {label:'|log₂FC| normalised',       default:0.05, color:'#60a5fa'},
+};
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const DS = {geo:null, gwas_ad:null, gwas_gm:null, gwas_osb:null, gwas_t2d:null, opentargets:null};
+let featureMatrix = [];
+let predictions   = [];
+let lrWeights     = null;
+let activeModels  = new Set(['wmss','zsa','borda','evidence','logReg','puBoot','ensemble']);
+let charts        = {};
+let sortState     = {col:'ensemble', dir:'desc'};
+
+// ═══════════════════════════════════════════════════════════════
+// COLUMN ALIASES — robust against naming differences
+// ═══════════════════════════════════════════════════════════════
+const COL = {
+  geo_sym:  ['Symbol','symbol','gene_symbol','GeneSymbol','SYMBOL','Name'],
+  geo_lfc:  ['log2FoldChange','logFC','log2FC','Log2FC','LFC','log2foldchange'],
+  geo_padj: ['padj','adj.P.Val','FDR','q.value','p.adj','adjusted_pvalue'],
+  geo_pval: ['pvalue','pval','P.Value','PValue','p_value'],
+  geo_base: ['baseMean','AveExpr','basemean','mean_expr','avgExpr'],
+  gwas_genes:['mappedGenes','Mapped_Genes','genes','GENES','mapped_genes','MappedGenes'],
+  gwas_pval: ['pValue','p_value','pvalue','P.Value','pVal'],
+  ot_sym:    ['symbol','Symbol','gene','Gene','SYMBOL'],
+  ot_global: ['globalScore','global_score','overallScore','overall_score','score'],
+  ot_clin:   ['clinicalPrecedence','clinical_precedence','clinical_score'],
+  ot_gwas:   ['gwasCredibleSets','gwas_credible_sets','gwasCredible'],
+  ot_react:  ['reactome','reactome_score'],
+  ot_lit:    ['europepmc','literature','europepmc_score'],
+  ot_pocket: ['hasPocket','has_pocket','pocket'],
+  ot_smb:    ['hasSmallMoleculeBinder','has_small_molecule_binder','smallMoleculeBinder'],
+  ot_membr:  ['isInMembrane','is_in_membrane','inMembrane'],
+  ot_secr:   ['isSecreted','is_secreted','secreted'],
+  ot_lig:    ['hasLigand','has_ligand','ligand'],
+  ot_mclin:  ['maxClinicalStage','max_clinical_stage','maxClinical'],
+  ot_exprA:  ['expressionAtlas','expression_atlas'],
+  ot_impc:   ['impc'],
+};
+
+function fcol(row, aliases) {
+  for (const a of aliases) if (a in row) return a;
+  // case-insensitive fallback
+  const keys = Object.keys(row);
+  for (const a of aliases) {
+    const m = keys.find(k => k.toLowerCase() === a.toLowerCase());
+    if (m) return m;
+  }
+  return null;
+}
+function gv(row, aliases, fallback=null) {
+  const k = fcol(row, aliases);
+  return k ? row[k] : fallback;
+}
+function toN(v, fb=null){
+  if(v===null||v===undefined||v===''||v==='No data'||v==='-'||v==='NaN'||v==='NA') return fb;
+  const n=parseFloat(v); return isNaN(n)?fb:n;
+}
+function parseGenes(str){
+  if(!str||str==='-'||str==='nan'||str==='None'||str==='NaN') return [];
+  return String(str).split(',').map(g=>g.trim()).filter(g=>g&&g.length>0&&g!=='nan');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI INIT
+// ═══════════════════════════════════════════════════════════════
+function initUI(){
+  // File cards
+  const fc = document.getElementById('file-cards');
+  FILE_CONFIG.forEach(f=>{
+    fc.innerHTML += `
+    <div class="file-card" id="fc-${f.key}" onclick="document.getElementById('fi-${f.key}').click()">
+      <input type="file" id="fi-${f.key}" accept=".xlsx,.xls,.csv" onchange="handleFile('${f.key}',this)" onclick="event.stopPropagation()">
+      <div class="fc-top">
+        <span class="fc-icon">${f.icon}</span>
+        <div>
+          <div class="fc-label">${f.label}</div>
+          <div class="fc-status" id="fs-${f.key}">Click to upload</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  // Model toggles
+  const mt = document.getElementById('model-toggles');
+  MODELS.forEach(m=>{
+    mt.innerHTML += `<button class="model-toggle active" id="mt-${m.key}" title="${m.desc}" onclick="toggleModel('${m.key}')">${m.label}</button>`;
+  });
+
+  // Weight sliders
+  const ws = document.getElementById('weight-sliders');
+  Object.entries(WMSS_WEIGHTS).forEach(([k,w])=>{
+    ws.innerHTML += `
+    <div class="config-row">
+      <label style="font-size:11px">${w.label} <span id="wv-${k}">${w.default}</span></label>
+      <input type="range" id="wr-${k}" min="0" max="0.5" step="0.01" value="${w.default}" oninput="updateWeight('${k}',this.value)">
+    </div>`;
+  });
+}
+
+function toggleModel(key){
+  if(activeModels.has(key)) activeModels.delete(key);
+  else activeModels.add(key);
+  document.getElementById('mt-'+key).classList.toggle('active');
+}
+function updateWeight(k,v){
+  document.getElementById('wv-'+k).textContent=parseFloat(v).toFixed(2);
+}
+function getWeights(){
+  const w={};
+  Object.keys(WMSS_WEIGHTS).forEach(k=>{w[k]=parseFloat(document.getElementById('wr-'+k).value);});
+  return w;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════════════════════
+function handleFile(key, input){
+  const file = input.files[0];
+  if(!file) return;
+  const card = document.getElementById('fc-'+key);
+  const status = document.getElementById('fs-'+key);
+  status.textContent = 'Reading…';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let data;
+      if(file.name.endsWith('.csv')){
+        const text = new TextDecoder().decode(e.target.result);
+        const wb = XLSX.read(text, {type:'string'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        data = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+      } else {
+        const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', raw:false, cellText:true, cellNF:false});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        data = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+      }
+      DS[key] = data;
+      card.classList.add('loaded'); card.classList.remove('error');
+      status.textContent = `✓ ${data.length.toLocaleString()} rows loaded`;
+      checkReady();
+    } catch(err){
+      card.classList.add('error');
+      status.textContent = 'Error: ' + err.message;
+      console.error(key, err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function checkReady(){
+  const n = Object.values(DS).filter(v=>v!==null).length;
+  const btn = document.getElementById('run-btn');
+  btn.disabled = n < 2;
+  if(n === 6) btn.textContent = '▶ Run Full Analysis';
+  else if(n > 0) btn.textContent = `▶ Run Analysis (${n}/6 files)`;
+  document.getElementById('sb-status').textContent = `${n}/6 datasets loaded`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN ANALYSIS PIPELINE
+// ═══════════════════════════════════════════════════════════════
+async function runAnalysis(){
+  const btn = document.getElementById('run-btn');
+  btn.disabled=true; btn.classList.add('running'); btn.textContent='⏳ Running…';
+  document.getElementById('empty-state').style.display='none';
+  document.getElementById('results-area').style.display='none';
+  setProgress(0,'Parsing datasets…','');
+
+  await sleep(30);
+  // 1. Parse all datasets
+  const geoMap     = parseGEO();
+  const adGenes    = parseGWASGenes(DS.gwas_ad);
+  const gmGenes    = parseGWASGenes(DS.gwas_gm);
+  const osbGenes   = parseGWASGenes(DS.gwas_osb);
+  const t2dGenes   = parseGWASGenes(DS.gwas_t2d);
+  const otMap      = parseOpenTargets();
+  setProgress(15,'Building feature matrix…',`${geoMap.size} genes in GEO`);
+
+  await sleep(30);
+  // 2. Feature matrix
+  featureMatrix = buildFeatureMatrix(geoMap, adGenes, gmGenes, osbGenes, t2dGenes, otMap);
+  setProgress(30,'Normalising features…',`${featureMatrix.length} genes × 22 features`);
+  await sleep(30);
+
+  const {normMatrix, means, stds} = normaliseFeatures(featureMatrix);
+  setProgress(40,'Training models…','');
+  await sleep(30);
+
+  // 3. Run active models
+  const weights = getWeights();
+  const padjCut = parseFloat(document.getElementById('padj-slider').value);
+  const lfcCut  = parseFloat(document.getElementById('lfc-slider').value);
+
+  // WMSS
+  setProgress(45,'WMSS scoring…','');
+  await sleep(20);
+  computeWMSS(featureMatrix, weights, padjCut, lfcCut);
+
+  // ZSA
+  setProgress(52,'Z-score aggregation…','');
+  await sleep(20);
+  computeZSA(normMatrix);
+
+  // Borda
+  setProgress(59,'Borda count ranking…','');
+  await sleep(20);
+  computeBorda(featureMatrix);
+
+  // Evidence count
+  setProgress(64,'Evidence counting…','');
+  await sleep(20);
+  computeEvidence(featureMatrix, padjCut, lfcCut);
+
+  // Logistic Regression
+  setProgress(70,'Training logistic regression…','Gradient descent (500 epochs)');
+  await sleep(50);
+  const lrResult = trainLogisticRegression(normMatrix);
+  lrWeights = lrResult;
+  applyLogReg(normMatrix, lrResult);
+
+  // PU Bootstrap
+  setProgress(82,'PU Bootstrap learning…','20 iterations');
+  await sleep(50);
+  computePUBootstrap(normMatrix, 20);
+
+  // Ensemble
+  setProgress(90,'Computing ensemble…','');
+  await sleep(20);
+  computeEnsemble(featureMatrix);
+
+  // 4. Sort and filter predictions
+  setProgress(94,'Ranking predictions…','');
+  await sleep(20);
+
+  const topN      = parseInt(document.getElementById('topn-slider').value);
+  const drugOnly  = document.getElementById('druggable-only').checked;
+  const degOnly   = document.getElementById('deg-only').checked;
+
+  predictions = featureMatrix
+    .filter(g => (!degOnly || g.is_deg))
+    .filter(g => (!drugOnly || g.is_druggable))
+    .sort((a,b) => b.ensemble - a.ensemble);
+
+  setProgress(97,'Rendering results…','');
+  await sleep(50);
+
+  // 5. Render everything
+  renderMetrics(padjCut);
+  renderCharts();
+  renderTable();
+  renderTopTargets(topN);
+  renderVolcano();
+  renderFeatureImportance(lrResult);
+  renderModelComparison();
+
+  setProgress(100,'Done!','Analysis complete');
+  await sleep(400);
+
+  document.getElementById('progress-wrap').style.display='none';
+  document.getElementById('results-area').style.display='block';
+  document.getElementById('sb-genes').textContent = featureMatrix.length.toLocaleString();
+  document.getElementById('sb-degs').textContent = featureMatrix.filter(g=>g.is_deg).length.toLocaleString();
+  document.getElementById('sb-cands').textContent = predictions.length.toLocaleString();
+  document.getElementById('sb-status').textContent = 'Analysis complete';
+
+  btn.disabled=false; btn.classList.remove('running'); btn.textContent='▶ Re-run Analysis';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DATA PARSERS
+// ═══════════════════════════════════════════════════════════════
+function parseGEO(){
+  const map = new Map();
+  if(!DS.geo) return map;
+  DS.geo.forEach(row=>{
+    const sym = gv(row,COL.geo_sym,'');
+    if(!sym||sym==='nan'||sym==='NA') return;
+    const lfc  = toN(gv(row,COL.geo_lfc));
+    const padj = toN(gv(row,COL.geo_padj));
+    const pval = toN(gv(row,COL.geo_pval));
+    const base = toN(gv(row,COL.geo_base));
+    map.set(sym, {sym, lfc:lfc||0, padj:padj===null?1:padj, pval:pval||1, baseMean:base||0});
+  });
+  return map;
+}
+
+function parseGWASGenes(data){
+  const set = new Set();
+  if(!data) return set;
+  data.forEach(row=>{
+    const genes = parseGenes(gv(row,COL.gwas_genes,''));
+    genes.forEach(g=>set.add(g));
+  });
+  return set;
+}
+
+function parseOpenTargets(){
+  const map = new Map();
+  if(!DS.opentargets) return map;
+  DS.opentargets.forEach(row=>{
+    const sym = gv(row,COL.ot_sym,'');
+    if(!sym||sym==='nan') return;
+    map.set(sym, {
+      globalScore:  toN(gv(row,COL.ot_global),0),
+      clinPrec:     toN(gv(row,COL.ot_clin),0),
+      gwasCS:       toN(gv(row,COL.ot_gwas),0),
+      reactome:     toN(gv(row,COL.ot_react),0),
+      europepmc:    toN(gv(row,COL.ot_lit),0),
+      hasPocket:    toN(gv(row,COL.ot_pocket),0),
+      hasSmb:       toN(gv(row,COL.ot_smb),0),
+      isInMembrane: toN(gv(row,COL.ot_membr),0),
+      isSecreted:   toN(gv(row,COL.ot_secr),0),
+      hasLigand:    toN(gv(row,COL.ot_lig),0),
+      maxClin:      toN(gv(row,COL.ot_mclin),0),
+      exprAtlas:    toN(gv(row,COL.ot_exprA),0),
+      impc:         toN(gv(row,COL.ot_impc),0),
+    });
+  });
+  return map;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FEATURE MATRIX
+// ═══════════════════════════════════════════════════════════════
+function buildFeatureMatrix(geoMap, adGenes, gmGenes, osbGenes, t2dGenes, otMap){
+  const padjCut = parseFloat(document.getElementById('padj-slider').value);
+  const lfcCut  = parseFloat(document.getElementById('lfc-slider').value);
+
+  // Universe = all genes in GEO (union with OT)
+  const allGenes = new Set([...geoMap.keys(), ...otMap.keys()]);
+  const matrix = [];
+
+  allGenes.forEach(sym=>{
+    const geo = geoMap.get(sym) || {lfc:0,padj:1,pval:1,baseMean:0};
+    const ot  = otMap.get(sym)  || {globalScore:0,clinPrec:0,gwasCS:0,reactome:0,europepmc:0,hasPocket:0,hasSmb:0,isInMembrane:0,isSecreted:0,hasLigand:0,maxClin:0,exprAtlas:0,impc:0};
+
+    const is_deg = geo.padj <= padjCut && Math.abs(geo.lfc) >= lfcCut;
+    const in_ad  = adGenes.has(sym);
+    const in_gm  = gmGenes.has(sym);
+    const in_osb = osbGenes.has(sym);
+    const in_t2d = t2dGenes.has(sym);
+    const is_os  = in_osb;
+    const is_gm2 = in_gm;
+    const is_os_gm = in_osb || in_gm;
+
+    const n_sources = (is_deg?1:0)+(in_ad?1:0)+(in_gm?1:0)+(in_osb?1:0)+(in_t2d?1:0)+(ot.globalScore>0.1?1:0);
+    const is_druggable = (ot.hasPocket>0||ot.hasSmb>0||ot.hasLigand>0||ot.isSecreted>0||ot.isInMembrane>0);
+
+    // neg_log10_padj (capped at 50 for plotting)
+    const neg_log_padj = geo.padj > 0 ? Math.min(-Math.log10(geo.padj), 50) : 50;
+
+    // Build feature vector for ML [0..1 range where possible]
+    const features = [
+      ot.globalScore,                          // 0: OT global
+      is_deg ? 1 : 0,                          // 1: is DEG
+      is_os_gm ? 1 : 0,                        // 2: OS/GM GWAS
+      in_ad ? 1 : 0,                           // 3: AD GWAS
+      in_t2d ? 1 : 0,                          // 4: T2D GWAS
+      Math.min(Math.abs(geo.lfc)/5, 1),        // 5: |log2FC| norm
+      neg_log_padj / 50,                       // 6: -log10(padj) norm
+      ot.clinPrec,                             // 7: clinical precedence
+      ot.gwasCS,                               // 8: GWAS credible sets
+      ot.reactome,                             // 9: reactome score
+      ot.europepmc,                            // 10: literature
+      ot.hasPocket,                            // 11: has pocket
+      ot.hasSmb,                               // 12: has SMB
+      ot.isInMembrane,                         // 13: membrane
+      ot.isSecreted,                           // 14: secreted
+      in_osb ? 1 : 0,                         // 15: OSB GWAS
+      in_gm ? 1 : 0,                          // 16: GM GWAS
+      n_sources / 6,                           // 17: source density
+      Math.min(geo.baseMean/10000, 1),         // 18: expression level
+      ot.maxClin,                              // 19: max clinical stage
+      ot.exprAtlas,                            // 20: expression atlas
+      ot.impc,                                 // 21: IMPC
+    ];
+
+    matrix.push({
+      gene:sym, lfc:geo.lfc, padj:geo.padj, pval:geo.pval, baseMean:geo.baseMean,
+      abs_lfc:Math.abs(geo.lfc), neg_log_padj,
+      is_deg, in_ad, in_gm, in_osb, in_t2d, is_os_gm,
+      n_sources, is_druggable,
+      globalScore: ot.globalScore||0,
+      clinPrec: ot.clinPrec||0,
+      hasPocket: ot.hasPocket||0,
+      hasSmb: ot.hasSmb||0,
+      isSecreted: ot.isSecreted||0,
+      isInMembrane: ot.isInMembrane||0,
+      ot_react: ot.reactome||0,
+      ot_lit: ot.europepmc||0,
+      features,
+      // model scores (filled later)
+      wmss:0, zsa:0, borda:0, evidence:0, logReg:0, puBoot:0, ensemble:0
+    });
+  });
+  return matrix;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FEATURE NORMALISATION (Z-score, per feature)
+// ═══════════════════════════════════════════════════════════════
+function normaliseFeatures(matrix){
+  const n = matrix.length;
+  const m = matrix[0].features.length;
+  const means = new Array(m).fill(0);
+  const stds  = new Array(m).fill(1);
+
+  // Compute means
+  matrix.forEach(g=>g.features.forEach((v,i)=>means[i]+=v));
+  means.forEach((_,i)=>means[i]/=n);
+
+  // Compute stds
+  matrix.forEach(g=>g.features.forEach((v,i)=>stds[i]+=(v-means[i])**2));
+  stds.forEach((_,i)=>stds[i]=Math.sqrt(stds[i]/n)||1);
+
+  // Normalise
+  const normMatrix = matrix.map(g=>({
+    ...g,
+    normFeatures: g.features.map((v,i)=>(v-means[i])/stds[i])
+  }));
+
+  return {normMatrix, means, stds};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ML MODEL 1 — WMSS (Weighted Multi-Source Score)
+// ═══════════════════════════════════════════════════════════════
+function computeWMSS(matrix, weights, padjCut, lfcCut){
+  const totalW = Object.values(weights).reduce((a,b)=>a+b,0)||1;
+  matrix.forEach(g=>{
+    const is_deg = g.padj <= padjCut && Math.abs(g.lfc) >= lfcCut;
+    const score =
+      (weights.ot_score    * g.globalScore) +
+      (weights.is_deg      * (is_deg?1:0)) +
+      (weights.is_os_gm    * (g.is_os_gm?1:0)) +
+      (weights.in_gwas_ad  * (g.in_ad?1:0)) +
+      (weights.in_gwas_t2d * (g.in_t2d?1:0)) +
+      (weights.abs_lfc_norm * Math.min(g.abs_lfc/5,1));
+    g.wmss = score / totalW;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ML MODEL 2 — ZSA (Z-score Aggregation)
+// ═══════════════════════════════════════════════════════════════
+function computeZSA(normMatrix){
+  // Weighted combination of z-scored features
+  // Focus features: OT(0), DEG(1), OS_GM(2), AD(3), T2D(4), |lfc|(5), padj(6)
+  const W = [0.30, 0.18, 0.18, 0.12, 0.08, 0.08, 0.06];
+  const rawScores = normMatrix.map(g=>{
+    let s = 0;
+    W.forEach((w,i)=>s+=w*g.normFeatures[i]);
+    // Bonus for multi-source
+    s += g.n_sources * 0.05;
+    return s;
+  });
+  // Normalise to [0,1]
+  const mn = Math.min(...rawScores), mx = Math.max(...rawScores);
+  const rng = mx-mn||1;
+  normMatrix.forEach((g,i)=>{ g.zsa = (rawScores[i]-mn)/rng; });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ML MODEL 3 — Borda Count Rank Aggregation
+// ═══════════════════════════════════════════════════════════════
+function computeBorda(matrix){
+  const n = matrix.length;
+  // Criteria to rank by (higher = better for all)
+  const criteria = [
+    g=>g.globalScore,
+    g=>g.abs_lfc,
+    g=>g.neg_log_padj,
+    g=>g.in_ad?1:0,
+    g=>g.in_gm?1:0,
+    g=>g.in_osb?1:0,
+    g=>g.in_t2d?1:0,
+    g=>g.n_sources,
+    g=>g.hasPocket+g.hasSmb,
+  ];
+  const totalRank = new Array(n).fill(0);
+  criteria.forEach(fn=>{
+    const scored = matrix.map((g,i)=>({i, v:fn(g)}));
+    scored.sort((a,b)=>b.v-a.v);
+    scored.forEach((item,rank)=>{ totalRank[item.i] += rank; });
+  });
+  const maxR = (n-1)*criteria.length;
+  matrix.forEach((g,i)=>{ g.borda = 1 - totalRank[i]/maxR; });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ML MODEL 4 — Evidence Count Score
+// ═══════════════════════════════════════════════════════════════
+function computeEvidence(matrix, padjCut, lfcCut){
+  const maxScore = 10;
+  matrix.forEach(g=>{
+    let s = 0;
+    if(g.padj <= padjCut)                       s += 1;
+    if(g.padj <= 0.01 && g.abs_lfc >= 1)        s += 1;
+    if(g.in_ad)                                  s += 1;
+    if(g.in_gm)                                  s += 1;
+    if(g.in_osb)                                 s += 1;
+    if(g.in_t2d)                                 s += 1;
+    if(g.globalScore > 0.1)                      s += 1;
+    if(g.globalScore > 0.3)                      s += 1;
+    if(g.hasPocket > 0 || g.hasSmb > 0)         s += 1;
+    if(g.clinPrec > 0)                           s += 0.5;
+    g.evidence = Math.min(s,maxScore)/maxScore;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ML MODEL 5 — Logistic Regression (gradient descent)
+// ═══════════════════════════════════════════════════════════════
+function trainLogisticRegression(normMatrix){
+  // Positive set: genes with clinical precedence > 0 in OpenTargets
+  // Feature subset for LR: features 0..14 (most informative)
+  const FEAT_IDX = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17];
+  const nF = FEAT_IDX.length;
+
+  const X = normMatrix.map(g=>FEAT_IDX.map(i=>g.normFeatures[i]));
+  const y = normMatrix.map(g=>g.clinPrec > 0 ? 1 : 0);
+
+  const nPos = y.reduce((a,b)=>a+b,0);
+  const nNeg = y.length - nPos;
+  const posW = nNeg/(nPos||1);  // class weight for imbalance
+
+  // Gradient descent
+  let w = new Array(nF).fill(0);
+  let b = 0;
+  const lr = 0.01, epochs = 500, lambda = 0.01;
+  const n = X.length;
+
+  for(let e=0; e<epochs; e++){
+    const dw = new Array(nF).fill(0);
+    let db = 0;
+    for(let i=0;i<n;i++){
+      const z = dot(X[i],w)+b;
+      const pred = sigmoid(z);
+      const err = (pred - y[i]) * (y[i]===1 ? posW : 1);
+      for(let j=0;j<nF;j++) dw[j] += err*X[i][j];
+      db += err;
+    }
+    for(let j=0;j<nF;j++) w[j] = w[j]*(1 - lr*lambda/n) - (lr/n)*dw[j];
+    b -= (lr/n)*db;
+  }
+  return {w, b, featIdx:FEAT_IDX};
+}
+
+function applyLogReg(normMatrix, lr){
+  const rawScores = normMatrix.map(g=>{
+    const feats = lr.featIdx.map(i=>g.normFeatures[i]);
+    return sigmoid(dot(feats,lr.w)+lr.b);
+  });
+  const mn=Math.min(...rawScores), mx=Math.max(...rawScores), rng=mx-mn||1;
+  normMatrix.forEach((g,i)=>{ g.logReg=(rawScores[i]-mn)/rng; });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ML MODEL 6 — PU Bootstrap (Positive-Unlabeled)
+// ═══════════════════════════════════════════════════════════════
+function computePUBootstrap(normMatrix, nIter){
+  const FEAT_IDX = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
+  const nF = FEAT_IDX.length;
+  const posIdx = normMatrix.map((g,i)=>g.clinPrec>0?i:-1).filter(i=>i>=0);
+  const unlIdx = normMatrix.map((g,i)=>g.clinPrec<=0?i:-1).filter(i=>i>=0);
+  const nPos = posIdx.length;
+  const allPredictions = normMatrix.map(()=>0);
+
+  for(let iter=0; iter<nIter; iter++){
+    // Sample negatives
+    const negSample = shuffle([...unlIdx]).slice(0, Math.min(nPos*3, unlIdx.length));
+    const trainIdx = [...posIdx, ...negSample];
+    const X = trainIdx.map(i=>FEAT_IDX.map(j=>normMatrix[i].normFeatures[j]));
+    const y = trainIdx.map(i=>posIdx.includes(i)?1:0);
+
+    // Mini logistic regression
+    let w=new Array(nF).fill(0), b=0;
+    const lr2=0.05, epochs2=200, n=X.length;
+    for(let e=0;e<epochs2;e++){
+      const dw=new Array(nF).fill(0); let db=0;
+      for(let i=0;i<n;i++){
+        const pred=sigmoid(dot(X[i],w)+b);
+        const err=pred-y[i];
+        for(let j=0;j<nF;j++) dw[j]+=err*X[i][j];
+        db+=err;
+      }
+      for(let j=0;j<nF;j++) w[j]-=(lr2/n)*dw[j];
+      b-=(lr2/n)*db;
+    }
+    normMatrix.forEach((g,i)=>{
+      const feats=FEAT_IDX.map(j=>g.normFeatures[j]);
+      allPredictions[i]+=sigmoid(dot(feats,w)+b)/nIter;
+    });
+  }
+  const mn=Math.min(...allPredictions), mx=Math.max(...allPredictions), rng=mx-mn||1;
+  normMatrix.forEach((g,i)=>{ g.puBoot=(allPredictions[i]-mn)/rng; });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ML MODEL 7 — Ensemble
+// ═══════════════════════════════════════════════════════════════
+function computeEnsemble(matrix){
+  const active = [...activeModels].filter(k=>k!=='ensemble');
+  const n = active.length||1;
+  matrix.forEach(g=>{
+    let s=0, count=0;
+    active.forEach(k=>{ if(k in g){ s+=g[k]; count++; } });
+    g.ensemble = count>0 ? s/count : 0;
+  });
+  // Normalise ensemble to [0,1]
+  const mn=Math.min(...matrix.map(g=>g.ensemble));
+  const mx=Math.max(...matrix.map(g=>g.ensemble));
+  const rng=mx-mn||1;
+  matrix.forEach(g=>g.ensemble=(g.ensemble-mn)/rng);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MATH HELPERS
+// ═══════════════════════════════════════════════════════════════
+function sigmoid(z){ return 1/(1+Math.exp(-Math.max(-500,Math.min(500,z)))); }
+function dot(a,b){ let s=0; for(let i=0;i<a.length;i++) s+=a[i]*b[i]; return s; }
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function setProgress(pct,msg,detail){
+  document.getElementById('progress-wrap').style.display='block';
+  document.getElementById('progress-bar').style.width=pct+'%';
+  document.getElementById('progress-msg').textContent=msg;
+  document.getElementById('progress-detail').textContent=detail;
+}
+function fmt(n,dec=3){ if(n===null||n===undefined) return '—'; return typeof n==='number'?n.toFixed(dec):n; }
+function fmtSci(n){ if(!n||n===1) return n===null?'—':n.toFixed(2); if(n<0.001) return n.toExponential(2); return n.toFixed(4); }
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — METRIC CARDS
+// ═══════════════════════════════════════════════════════════════
+function renderMetrics(padjCut){
+  const degs   = featureMatrix.filter(g=>g.is_deg);
+  const upDegs = degs.filter(g=>g.lfc>0);
+  const dnDegs = degs.filter(g=>g.lfc<0);
+  const osgm   = featureMatrix.filter(g=>g.is_os_gm&&g.is_deg);
+  const topDrug= predictions.filter(g=>g.is_druggable).slice(0,20);
+  const mg = document.getElementById('metric-grid');
+  mg.innerHTML = [
+    {label:'Total Genes',    val:featureMatrix.length.toLocaleString(),  sub:'in feature matrix',             col:'#7c6ff7'},
+    {label:'DEGs',           val:degs.length.toLocaleString(),           sub:`padj < ${padjCut}`,             col:'#60a5fa'},
+    {label:'Upregulated',    val:upDegs.length.toLocaleString(),         sub:'log2FC > 0',                    col:'#4ade80'},
+    {label:'Downregulated',  val:dnDegs.length.toLocaleString(),         sub:'log2FC < 0',                    col:'#f97066'},
+    {label:'OS/GM Candidates',val:osgm.length.toLocaleString(),         sub:'OSB or GM GWAS + DEG',          col:'#2dd4bf'},
+    {label:'Druggable Targets',val:topDrug.length.toLocaleString(),     sub:'hasPocket / SMB / secreted',    col:'#f472b6'},
+  ].map(m=>`
+    <div class="metric-card">
+      <div class="mc-label">${m.label}</div>
+      <div class="mc-val" style="color:${m.col}">${m.val}</div>
+      <div class="mc-sub">${m.sub}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — CHARTS
+// ═══════════════════════════════════════════════════════════════
+function renderCharts(){
+  destroyCharts();
+
+  // Score distribution histogram
+  const bins=20, min=0, max=1, bw=(max-min)/bins;
+  const counts=new Array(bins).fill(0);
+  predictions.forEach(g=>{const b=Math.min(Math.floor((g.ensemble-min)/bw),bins-1);counts[b]++;});
+  const labels=counts.map((_,i)=>(min+i*bw).toFixed(2));
+
+  charts.dist = new Chart(document.getElementById('distChart'),{
+    type:'bar',
+    data:{labels, datasets:[{label:'Genes',data:counts,backgroundColor:'#7c6ff7aa',borderColor:'#7c6ff7',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7899',font:{size:10}}},y:{ticks:{color:'#6b7899',font:{size:10}},grid:{color:'#2e3a52'}}}}
+  });
+
+  // Top 20 bar
+  const top20=predictions.slice(0,20);
+  charts.top20 = new Chart(document.getElementById('top20Chart'),{
+    type:'bar',
+    data:{
+      labels:top20.map(g=>g.gene),
+      datasets:[{
+        label:'Ensemble Score',
+        data:top20.map(g=>+g.ensemble.toFixed(4)),
+        backgroundColor:top20.map(g=>g.is_os_gm?'#2dd4bf99':g.in_ad?'#7c6ff799':'#9aa5be55'),
+        borderColor:top20.map(g=>g.is_os_gm?'#2dd4bf':g.in_ad?'#7c6ff7':'#9aa5be'),
+        borderWidth:1
+      }]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7899',font:{size:10}},grid:{color:'#2e3a52'}},y:{ticks:{color:'#e8eaf0',font:{size:10,weight:'600'}}}}}
+  });
+
+  // Evidence overlap donut
+  const adOnly=featureMatrix.filter(g=>g.in_ad&&!g.in_gm&&!g.in_osb&&!g.in_t2d).length;
+  const gmOnly=featureMatrix.filter(g=>g.in_gm&&!g.in_ad&&!g.in_osb).length;
+  const osbOnly=featureMatrix.filter(g=>g.in_osb&&!g.in_ad&&!g.in_gm).length;
+  const t2dOnly=featureMatrix.filter(g=>g.in_t2d&&!g.in_ad&&!g.in_osb&&!g.in_gm).length;
+  const multi=featureMatrix.filter(g=>g.n_sources>=3).length;
+  charts.overlap = new Chart(document.getElementById('overlapChart'),{
+    type:'doughnut',
+    data:{
+      labels:['AD GWAS only','GM GWAS only','OSB GWAS only','T2D GWAS only','Multi (≥3 sources)'],
+      datasets:[{data:[adOnly,gmOnly,osbOnly,t2dOnly,multi],backgroundColor:['#7c6ff7','#60a5fa','#2dd4bf','#fbbf24','#f472b6'],borderColor:'#161b27',borderWidth:2}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#9aa5be',font:{size:10},boxWidth:12}}}}
+  });
+
+  // DEG chart
+  const upN=featureMatrix.filter(g=>g.lfc>0&&g.is_deg).length;
+  const dnN=featureMatrix.filter(g=>g.lfc<0&&g.is_deg).length;
+  const nsN=featureMatrix.filter(g=>!g.is_deg).length;
+  charts.deg = new Chart(document.getElementById('degChart'),{
+    type:'doughnut',
+    data:{
+      labels:['Upregulated','Downregulated','Not significant'],
+      datasets:[{data:[upN,dnN,nsN],backgroundColor:['#4ade80','#f97066','#3d4f6e'],borderColor:'#161b27',borderWidth:2}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#9aa5be',font:{size:10},boxWidth:12}}}}
+  });
+}
+
+function destroyCharts(){
+  Object.values(charts).forEach(c=>{ try{c.destroy()}catch(e){} });
+  charts={};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — PREDICTIONS TABLE
+// ═══════════════════════════════════════════════════════════════
+let tableData = [];
+
+function renderTable(){
+  tableData = [...predictions];
+  sortState = {col:'ensemble', dir:'desc'};
+  renderTableBody();
+}
+
+function renderTableBody(){
+  const search = (document.getElementById('search-box').value||'').toLowerCase();
+  const filterSrc = document.getElementById('filter-source').value;
+
+  let data = tableData.filter(g=>{
+    if(search && !g.gene.toLowerCase().includes(search)) return false;
+    if(filterSrc==='os')     return g.in_osb;
+    if(filterSrc==='gm')     return g.in_gm;
+    if(filterSrc==='ad')     return g.in_ad;
+    if(filterSrc==='t2d')    return g.in_t2d;
+    if(filterSrc==='pocket') return g.hasPocket>0||g.hasSmb>0;
+    if(filterSrc==='multi')  return g.n_sources>=3;
+    return true;
+  });
+
+  // Sort
+  const {col,dir} = sortState;
+  data.sort((a,b)=>{ const v=a[col]<b[col]?-1:a[col]>b[col]?1:0; return dir==='asc'?v:-v; });
+
+  const tbody = document.getElementById('pred-tbody');
+  tbody.innerHTML = data.slice(0,1000).map((g,rank)=>{
+    const dir = g.lfc>0?'up':'dn';
+    const srcBadges = [
+      g.in_osb?'<span class="badge b-os">OS</span>':'',
+      g.in_gm?'<span class="badge b-gm">GM</span>':'',
+      g.in_ad?'<span class="badge b-ad">AD</span>':'',
+      g.in_t2d?'<span class="badge b-t2d">T2D</span>':'',
+    ].join('');
+    const drugBadge = (g.hasPocket>0||g.hasSmb>0)
+      ? '<span class="badge b-dr">Pocket</span>'
+      : g.isSecreted>0 ? '<span class="badge" style="background:#1e2535;color:#9aa5be">Secr</span>' : '';
+
+    function bar(score,color){
+      return `<div class="score-bar"><div class="bar-bg"><div class="bar-fill" style="width:${(score*100).toFixed(1)}%;background:${color}"></div></div>${score.toFixed(3)}</div>`;
+    }
+    return `<tr>
+      <td style="color:var(--text3)">${rank+1}</td>
+      <td><span class="gene-name">${g.gene}</span></td>
+      <td><span class="badge b-${dir}">${g.lfc>=0?'+':''}${g.lfc.toFixed(2)}</span></td>
+      <td style="color:${g.padj<0.05?'var(--purple2)':'var(--text3)'}">${fmtSci(g.padj)}</td>
+      <td>${srcBadges}</td>
+      <td>${g.globalScore.toFixed(3)}</td>
+      <td>${bar(g.wmss,'#7c6ff7')}</td>
+      <td>${bar(g.zsa,'#60a5fa')}</td>
+      <td>${bar(g.borda,'#fbbf24')}</td>
+      <td>${bar(g.evidence,'#4ade80')}</td>
+      <td>${bar(g.logReg,'#f97066')}</td>
+      <td>${bar(g.puBoot,'#f472b6')}</td>
+      <td>${bar(g.ensemble,'#2dd4bf')}</td>
+      <td>${drugBadge}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('table-footer').textContent = `Showing ${Math.min(data.length,1000)} of ${data.length} genes`;
+}
+
+function filterTable(){ renderTableBody(); }
+function sortTable(col){
+  if(sortState.col===col) sortState.dir=sortState.dir==='asc'?'desc':'asc';
+  else sortState={col, dir:'desc'};
+  renderTableBody();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — TOP TARGETS CARDS
+// ═══════════════════════════════════════════════════════════════
+const GENE_DESCS = {
+  NFATC2:'Nuclear factor of activated T-cells — regulates neuroinflammation and glucose-dependent transcription.',
+  RBFOX1:'RNA-binding protein — brain-specific splicing regulator; brain glucose metabolism GWAS hit.',
+  GABRG3:'GABA-A receptor γ3 subunit — inhibitory neurotransmission; glucose metabolism and AD GWAS.',
+  PTPRO:'Protein tyrosine phosphatase receptor O — oxidative stress GWAS; druggable phosphatase.',
+  TENM3:'Teneurin-3 — synaptic connectivity protein; oxidative stress GWAS overlap.',
+  WWOX:'WW domain oxidoreductase — redox enzyme; oxidative stress marker; tumour suppressor activity.',
+  INPP5A:'Inositol polyphosphate 5-phosphatase A — glucose/PI3K signalling; brain GM GWAS.',
+  QDPR:'Dihydropteridine reductase — recycles BH4 cofactor for catecholamine synthesis; redox-linked.',
+  BMP6:'Bone morphogenetic protein 6 — iron metabolism and ROS signalling; oxidative stress GWAS.',
+  INSR:'Insulin receptor — brain insulin resistance; glucose metabolism GWAS; druggable tyrosine kinase.',
+  PLCG2:'Phospholipase C gamma 2 — microglial immune signalling; strong AD GWAS credible sets.',
+  GSK3B:'Glycogen synthase kinase 3β — phosphorylates tau; major AD pathway; multiple inhibitors exist.',
+  CDKN2B:'Cyclin-dependent kinase inhibitor 2B — senescence pathway; high OpenTargets AD evidence.',
+  GRN:'Granulin/progranulin — microglial lysosomal function; strong GWAS credible sets in AD.',
+  TREM2:'Triggering receptor on myeloid cells 2 — microglial activation; high AD GWAS credible sets.',
+  CAMK1D:'CaM kinase I delta — calcium-glucose crosstalk; T2D GWAS; druggable kinase.',
+  BMPER:'BMP endothelial cell precursor-derived regulator — vascular oxidative stress; coagulation.',
+  SERPINE1:'Plasminogen activator inhibitor-1 — cerebrovascular thrombosis; glucose metabolism linked.',
+  IGF2:'Insulin-like growth factor 2 — brain insulin signalling; T2D and AD GWAS overlap.',
+  ABCA1:'ATP-binding cassette A1 — cholesterol/lipid efflux; APOE pathway; AD GWAS and DEG.',
+};
+
+function renderTopTargets(topN){
+  const top = predictions.slice(0,topN);
+  const grid = document.getElementById('target-grid');
+  grid.innerHTML = top.map((g,i)=>{
+    const desc = GENE_DESCS[g.gene] || `${g.gene} — differentially expressed in AD (log2FC ${g.lfc>0?'+':''}${g.lfc.toFixed(2)}; padj ${fmtSci(g.padj)}).`;
+    const badges=[
+      g.in_osb?'<span class="badge b-os">Oxidative stress</span>':'',
+      g.in_gm?'<span class="badge b-gm">Glucose metabolism</span>':'',
+      g.in_ad?'<span class="badge b-ad">AD GWAS</span>':'',
+      g.in_t2d?'<span class="badge b-t2d">T2D GWAS</span>':'',
+      g.hasPocket>0?'<span class="badge b-dr">Druggable pocket</span>':'',
+      g.hasSmb>0?'<span class="badge" style="background:var(--green-bg);color:var(--green)">SMB</span>':'',
+      g.isSecreted>0?'<span class="badge" style="background:#1e2535;color:#9aa5be">Secreted</span>':'',
+      g.isInMembrane>0?'<span class="badge" style="background:#1e2535;color:#9aa5be">Membrane</span>':'',
+    ].filter(Boolean).join('');
+
+    function sbar(score,color,label){
+      return `<div class="tc-score-row">
+        <div class="tc-score-label">${label}</div>
+        <div class="tc-score-bar"><div style="width:${(score*100).toFixed(1)}%;height:100%;background:${color};border-radius:4px"></div></div>
+        <div class="tc-score-val" style="color:${color}">${score.toFixed(3)}</div>
+      </div>`;
+    }
+    const fc=g.lfc>0?`<span class="tc-fc b-up">↑ ${g.lfc.toFixed(2)}</span>`:`<span class="tc-fc b-dn">↓ ${Math.abs(g.lfc).toFixed(2)}</span>`;
+
+    return `<div class="target-card">
+      <div class="target-card-header">
+        <div>
+          <div class="tc-gene">${g.gene}</div>
+          <div style="display:flex;gap:6px;margin-top:4px;align-items:center">
+            ${fc}
+            <span style="font-size:11px;color:var(--text3)">padj: ${fmtSci(g.padj)}</span>
+          </div>
+        </div>
+        <div class="tc-rank">#${i+1}</div>
+      </div>
+      <div class="tc-badges">${badges||'<span style="font-size:11px;color:var(--text3)">General AD evidence</span>'}</div>
+      ${sbar(g.ensemble,'#2dd4bf','Ensemble')}
+      ${sbar(g.wmss,'#7c6ff7','WMSS')}
+      ${sbar(g.logReg,'#f97066','LogReg')}
+      ${sbar(g.globalScore,'#f472b6','OT score')}
+      <div class="tc-desc">${desc}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — VOLCANO PLOT
+// ═══════════════════════════════════════════════════════════════
+function renderVolcano(){
+  const canvas = document.getElementById('volcanoCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth, H = 500;
+  canvas.width = W; canvas.height = H;
+
+  const pad = {l:60,r:40,t:30,b:50};
+  const plotW = W-pad.l-pad.r, plotH = H-pad.t-pad.b;
+
+  const data = featureMatrix.filter(g=>g.padj<1&&g.neg_log_padj<50);
+  const lfcRange = Math.max(...data.map(g=>Math.abs(g.lfc)), 5);
+  const padjMax  = Math.max(...data.map(g=>g.neg_log_padj), 10);
+
+  function toX(lfc){ return pad.l + (lfc+lfcRange)/(2*lfcRange)*plotW; }
+  function toY(nlp){ return pad.t + (1-nlp/padjMax)*plotH; }
+
+  // Background
+  ctx.fillStyle='#1e2535'; ctx.fillRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle='#2e3a52'; ctx.lineWidth=0.5;
+  for(let i=-4;i<=4;i+=2){const x=toX(i);ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,H-pad.b);ctx.stroke();}
+  for(let i=0;i<=Math.floor(padjMax);i+=5){const y=toY(i);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();}
+  // Threshold lines
+  const padjCut=parseFloat(document.getElementById('padj-slider').value);
+  const thresh=-Math.log10(padjCut);
+  ctx.strokeStyle='#f9706655'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  const ty=toY(thresh); ctx.beginPath(); ctx.moveTo(pad.l,ty); ctx.lineTo(W-pad.r,ty); ctx.stroke();
+  const lfcCut=parseFloat(document.getElementById('lfc-slider').value)||0;
+  if(lfcCut>0){
+    [-lfcCut,lfcCut].forEach(v=>{const x=toX(v);ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,H-pad.b);ctx.stroke();});
+  }
+  ctx.setLineDash([]);
+
+  // Points
+  const volcanoData=[];
+  data.forEach(g=>{
+    const x=toX(g.lfc), y=toY(g.neg_log_padj);
+    let color='#3d4f6e', r=2;
+    if(g.in_osb){color='#2dd4bf';r=4;}
+    else if(g.in_gm){color='#60a5fa';r=4;}
+    else if(g.in_ad&&g.is_deg){color='#7c6ff799';r=3;}
+    else if(g.is_deg){color='#9aa5be66';r=2;}
+    ctx.beginPath(); ctx.arc(x,y,r,0,2*Math.PI);
+    ctx.fillStyle=color; ctx.fill();
+    volcanoData.push({gene:g.gene,x,y,lfc:g.lfc,padj:g.padj,in_osb:g.in_osb,in_gm:g.in_gm,in_ad:g.in_ad,ensemble:g.ensemble});
+  });
+
+  // Label top hits
+  const top=predictions.filter(g=>g.is_os_gm&&g.is_deg).slice(0,15);
+  ctx.font='bold 11px sans-serif'; ctx.textAlign='left';
+  top.forEach(g=>{
+    const gd=volcanoData.find(d=>d.gene===g.gene);
+    if(!gd) return;
+    const col=g.in_osb?'#2dd4bf':g.in_gm?'#60a5fa':'#7c6ff7';
+    ctx.fillStyle=col+'cc';
+    ctx.fillText(g.gene, gd.x+5, gd.y-3);
+  });
+
+  // Axes
+  ctx.fillStyle='#9aa5be'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('log₂ Fold Change', W/2, H-8);
+  ctx.save(); ctx.translate(14,H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('-log₁₀(padj)',0,0); ctx.restore();
+
+  // Axis ticks
+  ctx.fillStyle='#6b7899'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+  for(let v=-4;v<=4;v+=2) ctx.fillText(v, toX(v), H-pad.b+14);
+  ctx.textAlign='right';
+  for(let v=0;v<=Math.floor(padjMax);v+=10) ctx.fillText(v, pad.l-6, toY(v)+4);
+
+  // Tooltip on hover
+  const tt=document.getElementById('tooltip');
+  canvas.onmousemove=e=>{
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const hit=volcanoData.find(d=>Math.hypot(d.x-mx,d.y-my)<8);
+    if(hit){
+      tt.style.display='block';
+      tt.style.left=(e.clientX+12)+'px'; tt.style.top=(e.clientY-10)+'px';
+      tt.innerHTML=`<strong style="color:#2dd4bf">${hit.gene}</strong><br>log2FC: ${hit.lfc.toFixed(3)}<br>padj: ${fmtSci(hit.padj)}<br>Ensemble: ${hit.ensemble.toFixed(3)}`;
+    } else { tt.style.display='none'; }
+  };
+  canvas.onmouseleave=()=>tt.style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — FEATURE IMPORTANCE
+// ═══════════════════════════════════════════════════════════════
+const FEAT_NAMES = [
+  'OT Global Score','Is DEG','OS/GM GWAS','AD GWAS','T2D GWAS','|log₂FC| norm.',
+  '-log₁₀(padj) norm.','Clinical Precedence','GWAS Credible Sets','Reactome Score',
+  'EuropePMC Score','Has Pocket','Has SMB','Is Membrane','Is Secreted',
+  'In OSB GWAS','In GM GWAS','Source Density','Expression Level','Max Clinical Stage',
+  'Expression Atlas','IMPC Score'
+];
+
+function renderFeatureImportance(lrResult){
+  // Feature importances from LR absolute coefficients
+  const absCo = lrResult.w.map((w,i)=>({name:FEAT_NAMES[lrResult.featIdx[i]||i], val:Math.abs(w)}));
+  const maxV = Math.max(...absCo.map(f=>f.val))||1;
+  absCo.sort((a,b)=>b.val-a.val);
+
+  const colors=['#7c6ff7','#2dd4bf','#60a5fa','#f472b6','#fbbf24','#4ade80','#f97066','#a59bf9','#5dcaa5','#85b7eb'];
+  document.getElementById('fi-bars').innerHTML = absCo.map((f,i)=>`
+    <div class="fi-row">
+      <div class="fi-label">${f.name}</div>
+      <div class="fi-bar-outer">
+        <div class="fi-bar-inner" style="width:${(f.val/maxV*100).toFixed(1)}%;background:${colors[i%colors.length]}">${(f.val/maxV*100).toFixed(0)}%</div>
+      </div>
+      <div class="fi-val">${f.val.toFixed(3)}</div>
+    </div>`).join('');
+
+  // WMSS pie
+  const wLabels=Object.values(WMSS_WEIGHTS).map(w=>w.label);
+  const wVals=Object.keys(WMSS_WEIGHTS).map(k=>parseFloat(document.getElementById('wr-'+k).value));
+  charts.wmssPie = new Chart(document.getElementById('wmssPieChart'),{
+    type:'pie',
+    data:{labels:wLabels, datasets:[{data:wVals, backgroundColor:Object.values(WMSS_WEIGHTS).map(w=>w.color+'cc'), borderColor:'#161b27', borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#9aa5be',font:{size:10},boxWidth:12}}}}
+  });
+
+  // LR coefficients bar
+  const signed=lrResult.w.map((v,i)=>({name:FEAT_NAMES[lrResult.featIdx[i]||i],v}));
+  signed.sort((a,b)=>b.v-a.v);
+  charts.lrCoef = new Chart(document.getElementById('lrCoefChart'),{
+    type:'bar',
+    data:{
+      labels:signed.map(f=>f.name.length>20?f.name.slice(0,18)+'…':f.name),
+      datasets:[{
+        label:'Coefficient',
+        data:signed.map(f=>+f.v.toFixed(4)),
+        backgroundColor:signed.map(f=>f.v>=0?'#7c6ff799':'#f9706699'),
+        borderColor:signed.map(f=>f.v>=0?'#7c6ff7':'#f97066'),
+        borderWidth:1
+      }]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7899',font:{size:9}},grid:{color:'#2e3a52'}},y:{ticks:{color:'#9aa5be',font:{size:9}}}}}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — MODEL COMPARISON
+// ═══════════════════════════════════════════════════════════════
+function renderModelComparison(){
+  const models = ['wmss','zsa','borda','evidence','logReg','puBoot','ensemble'];
+  const labels = ['WMSS','ZSA','Borda','Evidence','LogReg','PU-Boot','Ensemble'];
+  const top200 = predictions.slice(0,200);
+
+  // Correlation scatter (WMSS vs LogReg)
+  const scatterData = top200.map(g=>({x:g.wmss,y:g.logReg}));
+  charts.correl = new Chart(document.getElementById('correlChart'),{
+    type:'scatter',
+    data:{datasets:[{label:'WMSS vs LogReg',data:scatterData,pointRadius:3,pointBackgroundColor:'#7c6ff7aa',pointBorderColor:'transparent'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+      x:{title:{display:true,text:'WMSS Score',color:'#6b7899'},ticks:{color:'#6b7899',font:{size:9}},grid:{color:'#2e3a52'}},
+      y:{title:{display:true,text:'LogReg Score',color:'#6b7899'},ticks:{color:'#6b7899',font:{size:9}},grid:{color:'#2e3a52'}}
+    }}
+  });
+
+  // Rank agreement — stacked for top 50
+  const top50 = predictions.slice(0,50).map(g=>g.gene);
+  const modelRanks = models.slice(0,-1).map(m=>{
+    const sorted=[...featureMatrix].sort((a,b)=>b[m]-a[m]);
+    return top50.map(gene=>{const i=sorted.findIndex(g=>g.gene===gene);return i>=0?i:999;});
+  });
+
+  // Average rank for each gene across models
+  const avgRank = top50.map((_,gi)=>modelRanks.reduce((s,mr)=>s+mr[gi],0)/modelRanks.length);
+  charts.rank = new Chart(document.getElementById('rankChart'),{
+    type:'bar',
+    data:{
+      labels:top50,
+      datasets:[{label:'Avg rank across models',data:avgRank.map(v=>+v.toFixed(1)),backgroundColor:'#2dd4bf88',borderColor:'#2dd4bf',borderWidth:1}]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+      x:{ticks:{color:'#6b7899',font:{size:9}},grid:{color:'#2e3a52'},title:{display:true,text:'Avg rank (lower = better)',color:'#6b7899'}},
+      y:{ticks:{color:'#9aa5be',font:{size:8}}}
+    }}
+  });
+
+  // Model summary
+  const summaryRows = models.map((m,i)=>{
+    const scores=featureMatrix.map(g=>g[m]);
+    const mn=Math.min(...scores), mx=Math.max(...scores);
+    const avg=scores.reduce((a,b)=>a+b)/scores.length;
+    const top10in50=top50.filter(gene=>{
+      const sorted=[...featureMatrix].sort((a,b)=>b[m]-a[m]);
+      return sorted.slice(0,50).find(g=>g.gene===gene);
+    }).length;
+    return `<div class="model-row">
+      <div class="model-name" style="color:${['#7c6ff7','#60a5fa','#fbbf24','#4ade80','#f97066','#f472b6','#2dd4bf'][i]}">${labels[i]}</div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Mean: ${avg.toFixed(3)} | Range: ${mn.toFixed(3)}–${mx.toFixed(3)}</div>
+        <div class="model-bar-outer"><div class="model-bar-inner" style="width:${(top10in50/50*100).toFixed(0)}%;background:${['#7c6ff7','#60a5fa','#fbbf24','#4ade80','#f97066','#f472b6','#2dd4bf'][i]}aa"></div></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">${top10in50}/50 in top 50</div>
+    </div>`;
+  });
+  document.getElementById('model-summary-table').innerHTML = summaryRows.join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function showTab(id){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const idx={dashboard:0,predictions:1,targets:2,volcano:3,features:4,models:5}[id];
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  if(id==='volcano') setTimeout(renderVolcano,100);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT CSV
+// ═══════════════════════════════════════════════════════════════
+function exportCSV(){
+  if(!predictions.length){ alert('Run analysis first.'); return; }
+  const headers=['Gene','log2FC','padj','in_AD_GWAS','in_GM_GWAS','in_OSB_GWAS','in_T2D_GWAS','OT_GlobalScore','Has_Pocket','N_Sources','WMSS','ZSA','Borda','Evidence','LogReg','PU_Bootstrap','Ensemble','Is_Druggable'];
+  const rows=predictions.map(g=>[
+    g.gene,g.lfc.toFixed(4),g.padj.toExponential(3),
+    g.in_ad?1:0,g.in_gm?1:0,g.in_osb?1:0,g.in_t2d?1:0,
+    g.globalScore.toFixed(4),(g.hasPocket>0||g.hasSmb>0)?1:0,g.n_sources,
+    g.wmss.toFixed(4),g.zsa.toFixed(4),g.borda.toFixed(4),
+    g.evidence.toFixed(4),g.logReg.toFixed(4),g.puBoot.toFixed(4),
+    g.ensemble.toFixed(4),g.is_druggable?1:0
+  ].join(','));
+  const csv=[headers.join(','),...rows].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='AD_target_predictions.csv';
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+initUI();
+document.getElementById('run-btn').disabled=true;
+</script>
+</body>
+</html>
