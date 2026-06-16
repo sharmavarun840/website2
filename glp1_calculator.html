@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLP-1 Pharmacogenomics Risk Calculator</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f3ef;color:#1a1a1a;font-size:14px;line-height:1.5}
+.app{max-width:1000px;margin:0 auto;padding:24px 16px 60px}
+
+/* HEADER */
+.hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #1a1a1a}
+.hdr-left h1{font-size:21px;font-weight:700;letter-spacing:-0.3px}
+.hdr-left p{font-size:12px;color:#666;margin-top:3px}
+.hdr-badge{font-size:10px;background:#1a1a1a;color:#fff;padding:4px 10px;border-radius:4px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;margin-top:4px}
+
+/* STEP NAV */
+.steps{display:flex;background:#fff;border:1px solid #ddd;border-radius:10px;overflow:hidden;margin-bottom:22px}
+.step-btn{flex:1;padding:11px 6px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:500;color:#888;border-right:1px solid #ddd;transition:all .15s;text-align:center}
+.step-btn:last-child{border-right:none}
+.step-btn.active{background:#1a1a1a;color:#fff}
+.step-btn.done{background:#f0f0ec;color:#444}
+.step-btn:hover:not(.active){background:#f9f9f7}
+.step-num{display:block;font-size:10px;font-weight:400;opacity:.65;margin-bottom:1px}
+
+/* SECTION */
+.section{display:none}.section.active{display:block}
+
+/* CARD */
+.card{background:#fff;border:1px solid #e0dfd8;border-radius:12px;padding:20px 22px;margin-bottom:14px}
+.card-title{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;letter-spacing:.01em}
+.card-title .badge{font-size:9px;padding:2px 8px;border-radius:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.badge-genetics{background:#e8f0fe;color:#1a56db}
+.badge-clinical{background:#e8f5e9;color:#2e7d32}
+.badge-lab{background:#fff3e0;color:#e65100}
+.badge-results{background:#fce4ec;color:#c62828}
+
+/* DRUG SELECTOR */
+.drug-selector{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.drug-btn{border:1.5px solid #ddd;border-radius:10px;background:#fff;cursor:pointer;text-align:left;padding:14px 16px;transition:all .15s}
+.drug-btn.active{border-color:#1a1a1a;background:#1a1a1a;color:#fff}
+.drug-btn:hover:not(.active){border-color:#999;background:#fafaf8}
+.drug-btn strong{display:block;font-size:14px;margin-bottom:2px}
+.drug-btn span{font-size:11px;opacity:.7}
+.drug-btn .drug-tag{display:inline-block;margin-top:6px;font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3)}
+.drug-btn:not(.active) .drug-tag{background:#f0f0ec;color:#666;border-color:#ddd}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;color:#555;font-weight:600;letter-spacing:.02em}
+.form-group input,.form-group select{height:36px;padding:0 10px;border:1px solid #ddd;border-radius:7px;font-size:13px;color:#1a1a1a;background:#fff;font-family:inherit}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#1a1a1a;box-shadow:0 0 0 2px rgba(26,26,26,.08)}
+.form-group small{font-size:10px;color:#888;line-height:1.4}
+.bmi-display{background:#f5f4f0;border-radius:7px;padding:8px 10px;font-size:12px;color:#444;min-height:36px;display:flex;align-items:center}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed #ccc;border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .15s;background:#fafaf8}
+.upload-zone:hover,.upload-zone.drag-over{border-color:#1a1a1a;background:#f0f0ec}
+.upload-icon{font-size:28px;margin-bottom:8px}
+.upload-zone h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.upload-zone p{font-size:12px;color:#777;margin:2px 0}
+.upload-zone .fmt{font-size:10px;color:#aaa;margin-top:8px;letter-spacing:.02em}
+#fileInput{display:none}
+
+/* PARSE STATUS */
+.parse-status{margin-top:10px;font-size:12px;padding:8px 12px;border-radius:7px;display:none}
+.parse-ok{background:#e8f5e9;color:#2e7d32;border-left:3px solid #4caf50}
+.parse-err{background:#fce4ec;color:#c62828;border-left:3px solid #ef5350}
+.parse-warn{background:#fff8e1;color:#e65100;border-left:3px solid #ffc107}
+
+/* GENOTYPE GRID */
+.geno-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.geno-card{border:1px solid #e0dfd8;border-radius:9px;padding:13px;transition:border-color .2s}
+.geno-card.geno-detected{border-color:#4caf50;background:#f1f8e9}
+.geno-card.geno-missing{border-color:#ff9800;background:#fff8e1}
+.geno-card.geno-error{border-color:#ef5350;background:#fce4ec}
+.geno-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.geno-snpid{font-size:13px;font-weight:700;font-family:monospace;color:#1a1a1a}
+.geno-gene{font-size:10px;padding:2px 7px;border-radius:4px;background:#e8f0fe;color:#1a56db;font-weight:600}
+.geno-pheno{font-size:11px;color:#666;margin-bottom:8px}
+.geno-entry{display:flex;gap:8px;align-items:center}
+.geno-entry input{width:72px;height:32px;padding:0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:monospace;font-weight:700;text-align:center;text-transform:uppercase}
+.geno-hint{font-size:10px;color:#888}
+.geno-interp{font-size:11px;color:#2e7d32;margin-top:6px;font-style:italic;min-height:16px}
+.geno-interp.warn-interp{color:#e65100}
+.geno-interp.err-interp{color:#c62828}
+
+/* CHECKBOXES */
+.check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:7px}
+.check-item{display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid #e0dfd8;border-radius:7px;cursor:pointer;transition:all .15s}
+.check-item:hover{background:#f5f4f0;border-color:#bbb}
+.check-item input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:#1a1a1a}
+.check-item span{font-size:12px;color:#333}
+
+/* RESULTS */
+.score-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+.score-card{border:1px solid #e0dfd8;border-radius:12px;padding:18px 14px;text-align:center;background:#fff}
+.score-lbl{font-size:11px;color:#777;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.score-num{font-size:32px;font-weight:800;line-height:1;margin:4px 0}
+.score-cat{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:5px;margin-top:8px;letter-spacing:.02em}
+.score-sub{font-size:10px;color:#888;margin-top:5px}
+
+/* gauge */
+.gauge-wrap{width:100px;height:70px;margin:0 auto 4px}
+
+/* BREAKDOWN TABLE */
+.bk-table{width:100%;border-collapse:collapse;font-size:12px}
+.bk-table th{text-align:left;padding:6px 10px;font-size:10px;font-weight:700;color:#888;border-bottom:2px solid #e0dfd8;text-transform:uppercase;letter-spacing:.05em}
+.bk-table td{padding:7px 10px;border-bottom:1px solid #f0efe8;vertical-align:top}
+.bk-table tr:last-child td{border-bottom:none}
+.bk-table tr.total-row{font-weight:700;background:#f5f4f0}
+.pts-pos{color:#2e7d32;font-weight:700;text-align:right;white-space:nowrap}
+.pts-neg{color:#c62828;font-weight:700;text-align:right;white-space:nowrap}
+.pts-neu{color:#888;font-weight:600;text-align:right}
+
+/* OUTCOMES */
+.outcome-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.outcome-box{border:1px solid #e0dfd8;border-radius:9px;padding:13px;background:#fff}
+.outcome-box .ov{font-size:22px;font-weight:800;line-height:1.1;margin-bottom:3px}
+.outcome-box .ol{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.04em}
+.outcome-box .od{font-size:11px;color:#555;margin-top:3px}
+.outcome-actual{border-color:#4caf50!important;background:#f1f8e9!important}
+
+/* RECS */
+.rec{border-radius:9px;padding:12px 14px;margin-bottom:10px;font-size:12px;line-height:1.6}
+.rec-success{background:#e8f5e9;border-left:3px solid #4caf50;color:#1b5e20}
+.rec-info{background:#e8f0fe;border-left:3px solid #3f51b5;color:#1a237e}
+.rec-warn{background:#fff8e1;border-left:3px solid #ff9800;color:#bf360c}
+.rec-alert{background:#fce4ec;border-left:3px solid #ef5350;color:#7f0000}
+.rec strong{display:block;margin-bottom:3px;font-size:12px}
+
+/* NAV BUTTONS */
+.nav-btns{display:flex;justify-content:space-between;margin-top:18px}
+.btn-p{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-p:hover{background:#333}
+.btn-s{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;background:#fff;color:#1a1a1a;border:1.5px solid #ddd;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500}
+.btn-s:hover{background:#f5f4f0;border-color:#999}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap}
+
+/* SNPDB INFO */
+.snp-info-box{background:#f5f4f0;border-radius:8px;padding:12px 14px;margin-top:14px;font-size:11px;color:#555;line-height:1.7}
+.snp-info-box strong{color:#1a1a1a}
+
+/* DISCLAIMER */
+.disclaimer{font-size:10px;color:#aaa;border-top:1px solid #e0dfd8;margin-top:22px;padding-top:14px;line-height:1.7}
+
+/* DIVIDER */
+.divider{height:1px;background:#e0dfd8;margin:14px 0}
+
+/* SECTION HEADING */
+.sec-hd{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px}
+
+@media print{
+  .steps,.nav-btns,.btn-row,.upload-zone,.btn-p,.btn-s{display:none!important}
+  .section{display:block!important}
+  body{background:#fff}
+  .card{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
+}
+@media(max-width:600px){
+  .geno-grid,.score-grid,.form-row{grid-template-columns:1fr!important}
+  .drug-selector{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="hdr">
+  <div class="hdr-left">
+    <h1>GLP-1 Pharmacogenomics Risk Calculator</h1>
+    <p>Integrated genetic · clinical · biochemical · anthropometric scoring</p>
+  </div>
+  <div class="hdr-badge">Research Tool · Su et al. 2026 · Nature</div>
+</div>
+
+<div class="steps" id="stepNav">
+  <button class="step-btn active" onclick="goTo(0)"><span class="step-num">Step 1</span>Genetics & Drug</button>
+  <button class="step-btn" onclick="goTo(1)"><span class="step-num">Step 2</span>Clinical</button>
+  <button class="step-btn" onclick="goTo(2)"><span class="step-num">Step 3</span>Biochemical</button>
+  <button class="step-btn" onclick="goTo(3)"><span class="step-num">Step 4</span>Results</button>
+</div>
+
+<!-- ══════════════ SECTION 1: GENETICS ══════════════ -->
+<div class="section active" id="s0">
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-genetics">Drug</span> Medication Selection</div>
+    <div class="drug-selector">
+      <div class="drug-btn active" id="drug-sema" onclick="selectDrug('semaglutide')">
+        <strong>Semaglutide</strong>
+        <span>GLP-1 receptor agonist</span>
+        <div class="drug-tag">Ozempic · Wegovy · Compounded</div>
+      </div>
+      <div class="drug-btn" id="drug-tirz" onclick="selectDrug('tirzepatide')">
+        <strong>Tirzepatide</strong>
+        <span>Dual GLP-1 + GIP receptor agonist</span>
+        <div class="drug-tag">Mounjaro · Zepbound · Compounded</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Current dose (mg/week)</label>
+        <select id="dose">
+          <option value="">— select —</option>
+          <optgroup id="sema-doses" label="Semaglutide doses">
+            <option value="0.25_sema_low">0.25 mg — starter</option>
+            <option value="0.5_sema_low">0.5 mg — low</option>
+            <option value="1.0_sema_mid">1.0 mg — mid</option>
+            <option value="1.7_sema_mid">1.7 mg — mid-high</option>
+            <option value="2.4_sema_max">2.4 mg — maximum</option>
+          </optgroup>
+          <optgroup id="tirz-doses" label="Tirzepatide doses">
+            <option value="2.5_tirz_low">2.5 mg — starter</option>
+            <option value="5_tirz_low">5 mg — low</option>
+            <option value="7.5_tirz_mid">7.5 mg — mid</option>
+            <option value="10_tirz_mid">10 mg — mid-high</option>
+            <option value="12.5_tirz_high">12.5 mg — high</option>
+            <option value="15_tirz_max">15 mg — maximum</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Duration on drug (months)</label>
+        <input type="number" id="duration" min="0" max="60" placeholder="e.g. 8">
+      </div>
+      <div class="form-group">
+        <label>Reason for use</label>
+        <select id="reason">
+          <option value="">— select —</option>
+          <option value="weightloss">Weight loss (obesity)</option>
+          <option value="t2d_glucose">Blood sugar control (T2D)</option>
+          <option value="cv_risk">Cardiovascular risk reduction</option>
+          <option value="both">Weight + glucose</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-genetics">DNA</span> Genetic Data Upload</div>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div class="upload-icon">⬆</div>
+      <h3>Upload genotype file</h3>
+      <p>Drag and drop, or click to browse</p>
+      <div class="fmt">SUPPORTED FORMATS: VCF (.vcf) · 23andMe export (.txt/.tsv) · AncestryDNA · Generic tab-separated</div>
+    </div>
+    <input type="file" id="fileInput" accept=".vcf,.txt,.tsv,.csv" onchange="handleFileUpload(event)">
+    <div id="parseStatus" class="parse-status"></div>
+
+    <div class="snp-info-box">
+      <strong>Target SNPs for GLP-1 pharmacogenomics:</strong><br>
+      <strong>rs10305420</strong> (GLP1R, Chr.6) — Efficacy variant p.Pro7Leu, effect allele T, P=2.9×10⁻¹⁰ |
+      <strong>rs9357296</strong> (GLP1R, Chr.6) — Nausea risk, effect allele G, OR=1.36 |
+      <strong>rs11760106</strong> (GLP1R, Chr.6) — Vomiting risk, effect allele T, OR=1.57 |
+      <strong>rs1800437</strong> (GIPR, Chr.19) — Tirzepatide vomiting p.Glu354Gln, risk allele C, OR=1.83
+    </div>
+
+    <p class="sec-hd">Manual genotype entry <span style="font-weight:400;text-transform:none;letter-spacing:0">(or override file-detected values)</span></p>
+    <div class="geno-grid">
+
+      <div class="geno-card" id="card-rs10305420">
+        <div class="geno-hdr">
+          <div>
+            <div class="geno-snpid">rs10305420</div>
+            <div class="geno-gene">GLP1R</div>
+          </div>
+        </div>
+        <div class="geno-pheno">Efficacy — weight loss · p.Pro7Leu signal peptide</div>
+        <div class="geno-entry">
+          <input type="text" id="gt-rs10305420" maxlength="2" placeholder="CC" oninput="updateGeno('rs10305420',this.value)">
+          <div class="geno-hint">Effect allele: <strong>T</strong> | Ref: C<br>e.g. CC / CT / TT</div>
+        </div>
+        <div class="geno-interp" id="interp-rs10305420"></div>
+      </div>
+
+      <div class="geno-card" id="card-rs9357296">
+        <div class="geno-hdr">
+          <div>
+            <div class="geno-snpid">rs9357296</div>
+            <div class="geno-gene">GLP1R</div>
+          </div>
+        </div>
+        <div class="geno-pheno">Nausea risk (both drugs) · GLP1R locus</div>
+        <div class="geno-entry">
+          <input type="text" id="gt-rs9357296" maxlength="2" placeholder="CC" oninput="updateGeno('rs9357296',this.value)">
+          <div class="geno-hint">Risk allele: <strong>G</strong> | OR=1.36<br>e.g. CC / GC / GG</div>
+        </div>
+        <div class="geno-interp" id="interp-rs9357296"></div>
+      </div>
+
+      <div class="geno-card" id="card-rs11760106">
+        <div class="geno-hdr">
+          <div>
+            <div class="geno-snpid">rs11760106</div>
+            <div class="geno-gene">GLP1R</div>
+          </div>
+        </div>
+        <div class="geno-pheno">Vomiting risk (both drugs) · GLP1R locus</div>
+        <div class="geno-entry">
+          <input type="text" id="gt-rs11760106" maxlength="2" placeholder="CC" oninput="updateGeno('rs11760106',this.value)">
+          <div class="geno-hint">Risk allele: <strong>T</strong> | OR=1.57<br>e.g. CC / TC / TT</div>
+        </div>
+        <div class="geno-interp" id="interp-rs11760106"></div>
+      </div>
+
+      <div class="geno-card" id="card-rs1800437">
+        <div class="geno-hdr">
+          <div>
+            <div class="geno-snpid">rs1800437</div>
+            <div class="geno-gene" style="background:#fff3e0;color:#e65100">GIPR</div>
+          </div>
+        </div>
+        <div class="geno-pheno">Vomiting risk — <strong>tirzepatide only</strong> · p.Glu354Gln</div>
+        <div class="geno-entry">
+          <input type="text" id="gt-rs1800437" maxlength="2" placeholder="GG" oninput="updateGeno('rs1800437',this.value)">
+          <div class="geno-hint">Risk allele: <strong>C</strong> | Protective: G<br>e.g. GG / GC / CC</div>
+        </div>
+        <div class="geno-interp" id="interp-rs1800437"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="nav-btns">
+    <div></div>
+    <button class="btn-p" onclick="goTo(1)">Next: Clinical →</button>
+  </div>
+</div>
+
+<!-- ══════════════ SECTION 2: CLINICAL ══════════════ -->
+<div class="section" id="s1">
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-clinical">Demo</span> Demographics</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Biological sex</label>
+        <select id="sex">
+          <option value="">— select —</option>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Age (years)</label>
+        <input type="number" id="age" min="18" max="100" placeholder="e.g. 45">
+      </div>
+      <div class="form-group">
+        <label>Ancestry / ethnicity</label>
+        <select id="ancestry">
+          <option value="">— select —</option>
+          <option value="european">European / White</option>
+          <option value="latino">Latino / Hispanic</option>
+          <option value="african">African / African American</option>
+          <option value="east_asian">East Asian</option>
+          <option value="south_asian">South Asian</option>
+          <option value="middle_eastern">Middle Eastern</option>
+          <option value="admixed">Admixed / Other</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-clinical">Anthro</span> Anthropometrics</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Height (cm)</label>
+        <input type="number" id="height" min="100" max="250" placeholder="e.g. 170" oninput="calcBMI()">
+      </div>
+      <div class="form-group">
+        <label>Pre-treatment weight (kg)</label>
+        <input type="number" id="weight_pre" min="30" max="350" placeholder="e.g. 100" oninput="calcBMI()">
+      </div>
+      <div class="form-group">
+        <label>Current weight (kg)</label>
+        <input type="number" id="weight_now" min="30" max="350" placeholder="e.g. 87" oninput="calcBMI()">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="grid-column:span 2">
+        <label>BMI summary</label>
+        <div class="bmi-display" id="bmiDisplay">Enter height and weight above</div>
+      </div>
+      <div class="form-group">
+        <label>Waist circumference (cm)</label>
+        <input type="number" id="waist" min="50" max="250" placeholder="e.g. 98">
+        <small>Elevated: M &gt;102 cm · F &gt;88 cm</small>
+      </div>
+      <div class="form-group">
+        <label>Hip circumference (cm)</label>
+        <input type="number" id="hip" min="50" max="250" placeholder="e.g. 110">
+        <small>Used for WHR calculation</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-clinical">History</span> Medical History & Comorbidities</div>
+    <p style="font-size:11px;color:#777;margin-bottom:10px">Select all that apply:</p>
+    <div class="check-grid">
+      <label class="check-item"><input type="checkbox" id="t2d"> <span>Type 2 Diabetes (T2D)</span></label>
+      <label class="check-item"><input type="checkbox" id="hypertension"> <span>Hypertension</span></label>
+      <label class="check-item"><input type="checkbox" id="nafld"> <span>NAFLD / Fatty liver (MASLD)</span></label>
+      <label class="check-item"><input type="checkbox" id="cvd"> <span>Cardiovascular disease</span></label>
+      <label class="check-item"><input type="checkbox" id="gi_history"> <span>GI disorders (IBS / GERD / gastroparesis)</span></label>
+      <label class="check-item"><input type="checkbox" id="ckd"> <span>Chronic kidney disease (CKD)</span></label>
+      <label class="check-item"><input type="checkbox" id="hypothyroid"> <span>Hypothyroidism</span></label>
+      <label class="check-item"><input type="checkbox" id="pcos"> <span>PCOS</span></label>
+      <label class="check-item"><input type="checkbox" id="prev_glp1"> <span>Prior GLP-1 medication use</span></label>
+      <label class="check-item"><input type="checkbox" id="pancreatitis"> <span>History of pancreatitis</span></label>
+      <label class="check-item"><input type="checkbox" id="bariatric"> <span>Prior bariatric surgery</span></label>
+      <label class="check-item"><input type="checkbox" id="smoking"> <span>Current smoker</span></label>
+      <label class="check-item"><input type="checkbox" id="depression"> <span>Depression / anxiety</span></label>
+      <label class="check-item"><input type="checkbox" id="sleep_apnea"> <span>Obstructive sleep apnea</span></label>
+    </div>
+  </div>
+
+  <div class="nav-btns">
+    <button class="btn-s" onclick="goTo(0)">← Back</button>
+    <button class="btn-p" onclick="goTo(2)">Next: Biochemical →</button>
+  </div>
+</div>
+
+<!-- ══════════════ SECTION 3: BIOCHEMICAL ══════════════ -->
+<div class="section" id="s2">
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-lab">Glucose</span> Glucose Metabolism</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>HbA1c (%)</label>
+        <input type="number" id="hba1c" step="0.1" min="4" max="15" placeholder="e.g. 6.2">
+        <small>Normal &lt;5.7 · Pre-DM 5.7–6.4 · DM ≥6.5</small>
+      </div>
+      <div class="form-group">
+        <label>Fasting glucose (mg/dL)</label>
+        <input type="number" id="glucose" min="50" max="700" placeholder="e.g. 98">
+        <small>Normal &lt;100 · Pre-DM 100–125 · DM ≥126</small>
+      </div>
+      <div class="form-group">
+        <label>Fasting insulin (μIU/mL)</label>
+        <input type="number" id="insulin" step="0.1" min="0" max="200" placeholder="e.g. 12">
+        <small>HOMA-IR auto-calculated if entered</small>
+      </div>
+      <div class="form-group">
+        <label>2-hr postprandial glucose (mg/dL)</label>
+        <input type="number" id="ppg" min="50" max="700" placeholder="e.g. 140">
+        <small>Normal &lt;140 · IGT 140–199 · DM ≥200</small>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>C-peptide (ng/mL)</label>
+        <input type="number" id="cpeptide" step="0.1" min="0" max="20" placeholder="e.g. 2.5">
+        <small>Reflects endogenous insulin secretion</small>
+      </div>
+      <div class="form-group">
+        <label>Fasting GLP-1 level (pmol/L)</label>
+        <input type="number" id="glp1_level" step="0.1" placeholder="e.g. 5.0">
+        <small>Optional — if assay available</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-lab">Lipids</span> Lipid Panel</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Total cholesterol (mg/dL)</label>
+        <input type="number" id="tc" placeholder="e.g. 195">
+        <small>Desirable &lt;200</small>
+      </div>
+      <div class="form-group">
+        <label>LDL-C (mg/dL)</label>
+        <input type="number" id="ldl" placeholder="e.g. 115">
+        <small>Optimal &lt;100</small>
+      </div>
+      <div class="form-group">
+        <label>HDL-C (mg/dL)</label>
+        <input type="number" id="hdl" placeholder="e.g. 52">
+        <small>Low: M &lt;40 · F &lt;50</small>
+      </div>
+      <div class="form-group">
+        <label>Triglycerides (mg/dL)</label>
+        <input type="number" id="tg" placeholder="e.g. 148">
+        <small>Normal &lt;150 · High ≥500 (pancreatitis risk)</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-lab">Renal/Hepatic</span> Renal & Hepatic Function</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>eGFR (mL/min/1.73m²)</label>
+        <input type="number" id="egfr" placeholder="e.g. 85">
+        <small>Normal ≥60 · CKD3 30–59 · CKD4 15–29</small>
+      </div>
+      <div class="form-group">
+        <label>Serum creatinine (mg/dL)</label>
+        <input type="number" id="creatinine" step="0.01" min="0" max="20" placeholder="e.g. 0.9">
+      </div>
+      <div class="form-group">
+        <label>BUN / urea (mg/dL)</label>
+        <input type="number" id="bun" placeholder="e.g. 15">
+        <small>Normal 7–20</small>
+      </div>
+      <div class="form-group">
+        <label>Uric acid (mg/dL)</label>
+        <input type="number" id="uric" step="0.1" placeholder="e.g. 5.5">
+        <small>Normal: M &lt;7.0 · F &lt;6.0</small>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>ALT (U/L)</label>
+        <input type="number" id="alt" placeholder="e.g. 28">
+        <small>Normal: M &lt;40 · F &lt;35</small>
+      </div>
+      <div class="form-group">
+        <label>AST (U/L)</label>
+        <input type="number" id="ast" placeholder="e.g. 24">
+        <small>Normal: M &lt;40 · F &lt;32</small>
+      </div>
+      <div class="form-group">
+        <label>GGT (U/L)</label>
+        <input type="number" id="ggt" placeholder="e.g. 30">
+        <small>Normal: M &lt;55 · F &lt;38</small>
+      </div>
+      <div class="form-group">
+        <label>Albumin (g/dL)</label>
+        <input type="number" id="albumin" step="0.1" min="0" max="10" placeholder="e.g. 4.2">
+        <small>Normal 3.5–5.0</small>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Total bilirubin (mg/dL)</label>
+        <input type="number" id="bili" step="0.1" placeholder="e.g. 0.8">
+        <small>Normal 0.2–1.2</small>
+      </div>
+      <div class="form-group">
+        <label>ALP (U/L)</label>
+        <input type="number" id="alp" placeholder="e.g. 70">
+        <small>Normal 44–147</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-lab">Cardio</span> Cardiovascular & Inflammatory</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Systolic BP (mmHg)</label>
+        <input type="number" id="sbp" placeholder="e.g. 128">
+        <small>Normal &lt;120 · Stage 1 HTN 130–139</small>
+      </div>
+      <div class="form-group">
+        <label>Diastolic BP (mmHg)</label>
+        <input type="number" id="dbp" placeholder="e.g. 82">
+        <small>Normal &lt;80</small>
+      </div>
+      <div class="form-group">
+        <label>Resting heart rate (bpm)</label>
+        <input type="number" id="hr" placeholder="e.g. 72">
+      </div>
+      <div class="form-group">
+        <label>hs-CRP (mg/L)</label>
+        <input type="number" id="crp" step="0.1" placeholder="e.g. 1.5">
+        <small>Low CV risk &lt;1 · High &gt;3</small>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Ferritin (ng/mL)</label>
+        <input type="number" id="ferritin" placeholder="e.g. 85">
+        <small>Normal: M 12–300 · F 12–150</small>
+      </div>
+      <div class="form-group">
+        <label>Vitamin D (25-OH) (ng/mL)</label>
+        <input type="number" id="vitd" placeholder="e.g. 28">
+        <small>Deficiency &lt;20 · Sufficient ≥30</small>
+      </div>
+      <div class="form-group">
+        <label>TSH (mIU/L)</label>
+        <input type="number" id="tsh" step="0.01" placeholder="e.g. 2.1">
+        <small>Normal 0.4–4.0</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-btns">
+    <button class="btn-s" onclick="goTo(1)">← Back</button>
+    <button class="btn-p" onclick="calculate()">Calculate Risk Score →</button>
+  </div>
+</div>
+
+<!-- ══════════════ SECTION 4: RESULTS ══════════════ -->
+<div class="section" id="s3">
+  <div id="resultsContent" style="padding:40px;text-align:center;color:#888">
+    <p>Complete the inputs and click <strong>Calculate Risk Score</strong> to view results.</p>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ══════════════════════════════════════════════
+// SNP DATABASE
+// ══════════════════════════════════════════════
+const SNP_DB = {
+  'rs10305420': {
+    gene:'GLP1R', type:'efficacy',
+    effect:'T', other:'C',
+    cEffect:'A', cOther:'G',
+    OR:null, effBMI:0.641, effKg:0.76,
+    pval:'2.9×10⁻¹⁰', coloc_nausea:true, coloc_vomit:true
+  },
+  'rs9357296': {
+    gene:'GLP1R', type:'nausea',
+    effect:'G', other:'C',
+    cEffect:'C', cOther:'G', // C/G palindromic SNP
+    OR:1.36, pval:'2.6×10⁻²⁸'
+  },
+  'rs11760106': {
+    gene:'GLP1R', type:'vomiting',
+    effect:'T', other:'C',
+    cEffect:'A', cOther:'G',
+    OR:1.57, pval:'2.5×10⁻²⁷'
+  },
+  'rs1800437': {
+    gene:'GIPR', type:'vomiting_gipr',
+    effect:'C', other:'G',
+    cEffect:'G', cOther:'C', // C/G palindromic
+    OR_risk:1.83, OR_prot:0.546,
+    pval:'5.1×10⁻⁹', drug_specific:'tirzepatide'
+  }
+};
+
+const genotypes = {
+  'rs10305420':null,'rs9357296':null,'rs11760106':null,'rs1800437':null
+};
+let drug = 'semaglutide';
+let currentStep = 0;
+
+// ══════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════
+function goTo(n) {
+  document.querySelectorAll('.section').forEach((s,i) => s.classList.toggle('active', i===n));
+  document.querySelectorAll('.step-btn').forEach((b,i) => {
+    b.classList.toggle('active', i===n);
+    b.classList.toggle('done', i<n);
+  });
+  currentStep = n;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ══════════════════════════════════════════════
+// DRUG SELECTION
+// ══════════════════════════════════════════════
+function selectDrug(d) {
+  drug = d;
+  document.getElementById('drug-sema').classList.toggle('active', d==='semaglutide');
+  document.getElementById('drug-tirz').classList.toggle('active', d==='tirzepatide');
+  // Show only relevant dose options
+  const semaGroup = document.getElementById('sema-doses');
+  const tirzGroup = document.getElementById('tirz-doses');
+  semaGroup.style.display = d==='semaglutide' ? '' : 'none';
+  tirzGroup.style.display = d==='tirzepatide' ? '' : 'none';
+  // Reset dose selection when switching drugs
+  const doseEl = document.getElementById('dose');
+  doseEl.value = '';
+}
+
+// ══════════════════════════════════════════════
+// BMI CALCULATION
+// ══════════════════════════════════════════════
+function calcBMI() {
+  const h = parseFloat(document.getElementById('height').value);
+  const wp = parseFloat(document.getElementById('weight_pre').value);
+  const wn = parseFloat(document.getElementById('weight_now').value);
+  const el = document.getElementById('bmiDisplay');
+  if (!h || !wp) { el.innerHTML = 'Enter height and pre-treatment weight'; return; }
+  const bmi_pre = wp / ((h/100)**2);
+  const cat = bmi_pre<18.5?'Underweight':bmi_pre<25?'Normal weight':bmi_pre<30?'Overweight':bmi_pre<35?'Obese class I':bmi_pre<40?'Obese class II':'Obese class III';
+  let html = `Pre-treatment BMI: <strong>${bmi_pre.toFixed(1)} kg/m²</strong> — ${cat}`;
+  if (wn && h) {
+    const bmi_now = wn/((h/100)**2);
+    const dBMI = (bmi_now - bmi_pre).toFixed(1);
+    const dPct = (((wn-wp)/wp)*100).toFixed(1);
+    const sign = dBMI > 0 ? '+' : '';
+    html += `&nbsp;&nbsp;|&nbsp;&nbsp;Current BMI: <strong>${bmi_now.toFixed(1)}</strong> (${sign}${dBMI} kg/m², ${dPct}% body weight change)`;
+  }
+  el.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════
+// GENOTYPE PARSING & VALIDATION
+// ══════════════════════════════════════════════
+function normalizeAllele(a) { return a.toUpperCase().replace(/[^ACGT]/g,''); }
+
+function complement(a) {
+  return {A:'T',T:'A',C:'G',G:'C'}[a] || a;
+}
+
+function normalizeGenotype(raw, snpId) {
+  if (!raw) return null;
+  const s = SNP_DB[snpId];
+  const cleaned = raw.toUpperCase().replace(/[^ACGT]/g,'');
+  if (cleaned.length !== 2) return null;
+  const a1 = cleaned[0], a2 = cleaned[1];
+  const validDirect = new Set([s.effect, s.other]);
+  const validComp = new Set([s.cEffect, s.cOther]);
+  const bothDirect = validDirect.has(a1) && validDirect.has(a2);
+  const bothComp = validComp.has(a1) && validComp.has(a2);
+  if (bothDirect) return cleaned;
+  if (bothComp && !bothDirect) {
+    // Flip to direct strand
+    return complement(a1) + complement(a2);
+  }
+  // Palindromic C/G or A/T SNPs - accept as-is if alleles match either set
+  if (validDirect.has(a1) || validDirect.has(a2)) return cleaned;
+  return null;
+}
+
+function countEffectAlleles(genoStr, snpId) {
+  if (!genoStr) return null;
+  const ea = SNP_DB[snpId].effect;
+  return genoStr.split('').filter(a=>a===ea).length;
+}
+
+function updateGeno(snpId, val) {
+  const norm = val.length >= 2 ? normalizeGenotype(val, snpId) : null;
+  genotypes[snpId] = norm;
+  const interp = document.getElementById('interp-'+snpId);
+  const card = document.getElementById('card-'+snpId);
+  card.classList.remove('geno-detected','geno-missing','geno-error');
+  if (val.length < 2) { interp.textContent=''; return; }
+  if (!norm) {
+    interp.textContent = 'Unrecognized alleles — check format or strand';
+    interp.className = 'geno-interp err-interp';
+    card.classList.add('geno-error');
+    return;
+  }
+  const n = countEffectAlleles(norm, snpId);
+  interp.className = 'geno-interp';
+  card.classList.add('geno-detected');
+  if (snpId === 'rs10305420') {
+    const kg = (n * 0.76).toFixed(2);
+    interp.textContent = `${n} effect allele(s) [T] → ~${kg} kg additional weight loss vs CC`;
+  } else if (snpId === 'rs9357296') {
+    const or = Math.pow(1.36, n).toFixed(2);
+    interp.textContent = `${n} risk allele(s) [G] → nausea OR ×${or} vs CC baseline`;
+  } else if (snpId === 'rs11760106') {
+    const or = Math.pow(1.57, n).toFixed(2);
+    interp.textContent = `${n} risk allele(s) [T] → vomiting OR ×${or} vs CC baseline`;
+  } else if (snpId === 'rs1800437') {
+    const prot = 2 - n;
+    const risk_level = n===0?'Low':n===1?'Intermediate':'High';
+    interp.textContent = `${n} risk allele(s) [C], ${prot} protective [G] → tirzepatide vomiting: ${risk_level} risk`;
+    if (n > 0) interp.className = 'geno-interp warn-interp';
+  }
+}
+
+// ══════════════════════════════════════════════
+// FILE PARSING (VCF + 23andMe + generic TSV)
+// ══════════════════════════════════════════════
+function onDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag-over'); }
+function onDragLeave(e) { document.getElementById('uploadZone').classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  onDragLeave(e);
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFileUpload(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const result = parseGenotypeFile(text);
+    showParseStatus(result);
+    result.found.forEach(({snpId, geno}) => {
+      const input = document.getElementById('gt-'+snpId);
+      if (input) { input.value = geno; updateGeno(snpId, geno); }
+    });
+  };
+  reader.readAsText(file);
+}
+
+function parseGenotypeFile(text) {
+  const lines = text.split(/\r?\n/);
+  const targets = Object.keys(SNP_DB);
+  const found = [];
+  const missing = [];
+
+  // Detect format
+  const isVCF = lines.some(l => l.startsWith('##fileformat=VCF') || l.startsWith('#CHROM'));
+  const is23andMe = lines.some(l => l.startsWith('#') && (l.includes('23andMe') || l.includes('23andme')));
+  const isAncestry = lines.some(l => l.startsWith('#') && l.toLowerCase().includes('ancestry'));
+  let fmt = isVCF ? 'VCF' : is23andMe ? '23andMe' : isAncestry ? 'AncestryDNA' : 'Generic TSV';
+
+  for (const line of lines) {
+    if (line.startsWith('#') || !line.trim()) continue;
+    const cols = line.split('\t');
+
+    if (isVCF && cols.length >= 10) {
+      const rsId = cols[2];
+      if (!targets.includes(rsId)) continue;
+      const ref = cols[3]; const alt = cols[4].split(',')[0];
+      const fmtFields = cols[8].split(':');
+      const sampleFields = cols[9].split(':');
+      const gtIdx = fmtFields.indexOf('GT');
+      if (gtIdx < 0) continue;
+      const gt = sampleFields[gtIdx];
+      const indices = gt.split(/[\/|]/).map(Number);
+      const alleleArr = [ref, ...cols[4].split(',')];
+      const geno = indices.map(i => alleleArr[i]||'?').join('');
+      found.push({snpId:rsId, geno, fmt:'VCF'});
+
+    } else if (cols.length >= 4) {
+      // 23andMe / AncestryDNA: rsid \t chr \t pos \t genotype
+      const rsId = cols[0].trim();
+      if (!targets.includes(rsId)) continue;
+      const geno = cols[3].trim().replace(/-/g,'').replace(/0/g,'');
+      if (geno && geno.length === 2) found.push({snpId:rsId, geno, fmt});
+
+    } else if (cols.length === 2) {
+      // Generic: rsid \t genotype
+      const rsId = cols[0].trim();
+      if (!targets.includes(rsId)) continue;
+      const geno = cols[1].trim();
+      if (geno && geno.length === 2) found.push({snpId:rsId, geno, fmt:'generic'});
+    }
+  }
+
+  const foundIds = found.map(f=>f.snpId);
+  targets.forEach(t => { if (!foundIds.includes(t)) missing.push(t); });
+  return {found, missing, fmt, total:targets.length};
+}
+
+function showParseStatus(result) {
+  const el = document.getElementById('parseStatus');
+  el.style.display = 'block';
+  if (result.found.length > 0) {
+    el.className = 'parse-status parse-ok';
+    const foundStr = result.found.map(f=>`${f.snpId} (${f.geno})`).join(', ');
+    const missStr = result.missing.length > 0 ? ` — Not found: ${result.missing.join(', ')}` : '';
+    el.innerHTML = `✓ ${result.fmt} format detected — Parsed ${result.found.length}/${result.total} target SNPs: ${foundStr}${missStr}`;
+  } else {
+    el.className = 'parse-status parse-err';
+    el.textContent = `No target SNPs found in file (${result.fmt} format). Try manual entry below, or check that rsIDs are present in your file.`;
+  }
+}
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+const gv = id => { const e=document.getElementById(id); return e?parseFloat(e.value)||null:null; };
+const gc = id => { const e=document.getElementById(id); return e?e.checked:false; };
+const gs = id => { const e=document.getElementById(id); return e?e.value:''; };
+
+// ══════════════════════════════════════════════
+// SCORING ENGINE
+// ══════════════════════════════════════════════
+function calculate() {
+  const scores = computeScores();
+  renderResults(scores);
+  goTo(3);
+}
+
+function computeScores() {
+  const bd_eff = [];  // breakdown efficacy
+  const bd_gi = [];   // breakdown GI
+  const bd_vt = [];   // breakdown vomit tirzepatide
+
+  // ── GENETIC FACTORS ─────────────────────────
+  const n_eff = genotypes['rs10305420'] !== null ? countEffectAlleles(genotypes['rs10305420'],'rs10305420') : null;
+  const n_nausea = genotypes['rs9357296'] !== null ? countEffectAlleles(genotypes['rs9357296'],'rs9357296') : null;
+  const n_vomit = genotypes['rs11760106'] !== null ? countEffectAlleles(genotypes['rs11760106'],'rs11760106') : null;
+  const n_gipr = genotypes['rs1800437'] !== null ? countEffectAlleles(genotypes['rs1800437'],'rs1800437') : null;
+
+  // Efficacy SNP (max 20 pts)
+  let gEff = n_eff !== null ? [0,10,20][n_eff] : 7; // 7 = population average (T freq ~40% EUR)
+  bd_eff.push({f:'rs10305420 (GLP1R efficacy)', v: n_eff!==null ? genotypes['rs10305420']+` — ${n_eff} T allele(s)` : 'Not entered (pop. average used)', pts:gEff, max:20, src:'genetic'});
+
+  // Nausea SNP (max 20 pts for GI risk)
+  let gNausea = n_nausea !== null ? [0,10,20][n_nausea] : 5;
+  bd_gi.push({f:'rs9357296 (GLP1R nausea)', v: n_nausea!==null ? genotypes['rs9357296']+` — OR×${Math.pow(1.36,n_nausea).toFixed(2)}` : 'Not entered (pop. base rate)', pts:gNausea, max:20, src:'genetic'});
+
+  // Vomiting SNP GLP1R (max 20 pts)
+  let gVomit = n_vomit !== null ? [0,10,20][n_vomit] : 3;
+  bd_gi.push({f:'rs11760106 (GLP1R vomiting)', v: n_vomit!==null ? genotypes['rs11760106']+` — OR×${Math.pow(1.57,n_vomit).toFixed(2)}` : 'Not entered (pop. base rate)', pts:gVomit, max:20, src:'genetic'});
+  bd_vt.push({f:'rs11760106 (GLP1R vomiting)', v: n_vomit!==null ? genotypes['rs11760106'] : 'Not entered', pts:gVomit, max:20, src:'genetic'});
+
+  // GIPR vomiting SNP (tirzepatide only, max 30 pts)
+  let gGIPR_raw = n_gipr !== null ? [0,15,30][n_gipr] : 8;
+  let gGIPR = drug === 'tirzepatide' ? gGIPR_raw : 0;
+  bd_vt.push({f:'rs1800437 (GIPR vomiting)', v: n_gipr!==null ? genotypes['rs1800437']+` — ${n_gipr} risk C allele(s)` : 'Not entered', pts:gGIPR, max:30, src:'genetic', note: drug!=='tirzepatide'?'N/A for semaglutide':''});
+
+  // GLP1R × GIPR interaction (max 20 pts — reflects 14.8× OR)
+  let interaction = 0;
+  if (drug==='tirzepatide' && n_vomit===2 && n_gipr===2) {
+    interaction = 20;
+    bd_vt.push({f:'GLP1R × GIPR interaction', v:'Both homozygous risk — 14.8× OR for vomiting (paper data)', pts:20, max:20, src:'genetic'});
+  }
+
+  // ── DRUG & DOSE FACTORS ───────────────────
+  const drugPts = drug==='tirzepatide' ? 12 : 8;
+  bd_eff.push({f:'Drug type', v: drug==='tirzepatide'?'Tirzepatide (greater avg. efficacy: median −15.1% BMI)':'Semaglutide (median −10.7% BMI)', pts:drugPts, max:12, src:'clinical'});
+
+  const doseStr = gs('dose');
+  let dosePts = 3, doseLabel='Not entered';
+  if (doseStr) {
+    const parts = doseStr.split('_');
+    const tier = parts[2];
+    dosePts = tier==='max'?8:tier==='high'?7:tier==='mid'?5:tier==='low'?3:2;
+    doseLabel = `${parts[0]} mg/week (${tier})`;
+  }
+  bd_eff.push({f:'Dose adequacy', v:doseLabel, pts:dosePts, max:8, src:'clinical'});
+
+  const dur = gv('duration');
+  let durPts = 2, durLabel = 'Not entered';
+  if (dur !== null) {
+    durPts = dur>=18?8:dur>=12?7:dur>=6?5:dur>=3?3:1;
+    durLabel = `${dur} months`;
+  }
+  bd_eff.push({f:'Treatment duration', v:durLabel, pts:durPts, max:8, src:'clinical'});
+
+  // ── DEMOGRAPHICS ──────────────────────────
+  const sex = gs('sex');
+  if (sex==='female') {
+    bd_eff.push({f:'Sex', v:'Female — greater avg. efficacy (−12.2% vs −10.0%)', pts:6, max:6, src:'clinical'});
+    bd_gi.push({f:'Sex', v:'Female — higher GI sensitivity', pts:8, max:8, src:'clinical'});
+    bd_vt.push({f:'Sex', v:'Female', pts:5, max:5, src:'clinical'});
+  } else if (sex==='male') {
+    bd_eff.push({f:'Sex', v:'Male', pts:0, max:6, src:'clinical'});
+    bd_gi.push({f:'Sex', v:'Male — lower GI sensitivity', pts:2, max:8, src:'clinical'});
+    bd_vt.push({f:'Sex', v:'Male', pts:1, max:5, src:'clinical'});
+  }
+
+  const age = gv('age');
+  if (age !== null) {
+    const aPts = age<40?5:age<=55?7:age<=65?4:2;
+    const aGI = age<40?8:age<=45?6:age<=55?4:2;
+    bd_eff.push({f:'Age', v:`${age} years`, pts:aPts, max:7, src:'clinical'});
+    bd_gi.push({f:'Age', v:`${age} years (younger = higher GI sensitivity)`, pts:aGI, max:8, src:'clinical'});
+    bd_vt.push({f:'Age', v:`${age} years`, pts:Math.min(aGI,6), max:6, src:'clinical'});
+  }
+
+  const anc = gs('ancestry');
+  const ancPts = anc==='european'?3:anc==='middle_eastern'?2:anc==='south_asian'?2:anc==='east_asian'?2:anc==='latino'?1:anc==='african'?0:1;
+  if (anc) bd_eff.push({f:'Ancestry', v:`${anc} (affects drug efficacy & rs10305420 T allele freq)`, pts:ancPts, max:3, src:'clinical'});
+
+  // ── ANTHROPOMETRICS ────────────────────────
+  const h=gv('height'), wp=gv('weight_pre'), wn=gv('weight_now');
+  let bmi_pre = null;
+  if (h && wp) {
+    bmi_pre = wp/((h/100)**2);
+    const bPts = bmi_pre>=35&&bmi_pre<45?9:bmi_pre>=30?7:bmi_pre>=45?8:bmi_pre>=25?4:2;
+    bd_eff.push({f:'Baseline BMI', v:`${bmi_pre.toFixed(1)} kg/m²`, pts:bPts, max:9, src:'anthro'});
+    // Elevated BMI also slightly raises GI risk
+    if (bmi_pre > 40) bd_gi.push({f:'BMI >40 (gastroparesis risk)', v:`${bmi_pre.toFixed(1)} kg/m²`, pts:3, max:3, src:'anthro'});
+  }
+
+  const waist = gv('waist'), hip = gv('hip');
+  if (waist && sex) {
+    const elevated = (sex==='male'&&waist>102)||(sex==='female'&&waist>88)||(sex===''&&waist>95);
+    bd_eff.push({f:'Waist circumference', v:`${waist} cm — ${elevated?'elevated (central adiposity)':'within range'}`, pts:elevated?3:0, max:3, src:'anthro'});
+    if (elevated) bd_gi.push({f:'Central adiposity (elevated waist)', v:`${waist} cm`, pts:2, max:2, src:'anthro'});
+  }
+  if (waist && hip && hip>0) {
+    const whr = (waist/hip).toFixed(2);
+    const whrHigh = (sex==='male'&&whr>0.9)||(sex==='female'&&whr>0.85)||(sex===''&&whr>0.87);
+    if (whrHigh) bd_eff.push({f:'WHR elevated', v:`WHR ${whr} — higher visceral fat`, pts:1, max:1, src:'anthro'});
+  }
+
+  // ── COMORBIDITIES ─────────────────────────
+  const t2d = gc('t2d'), nafld = gc('nafld'), htn = gc('hypertension');
+  const cvd = gc('cvd'), gi_h = gc('gi_history'), ckd = gc('ckd');
+  const prev = gc('prev_glp1'), panc = gc('pancreatitis'), hypo = gc('hypothyroid');
+  const pcos = gc('pcos');
+
+  if (t2d) {
+    bd_eff.push({f:'Type 2 Diabetes', v:'Reduces GLP-1 weight loss efficacy by −2.87 pp (paper data)', pts:-10, max:0, src:'comorbidity'});
+  } else {
+    bd_eff.push({f:'No T2D', v:'Non-diabetic — no efficacy penalty', pts:2, max:2, src:'comorbidity'});
+  }
+  if (nafld) bd_eff.push({f:'NAFLD/MASLD', v:'Associated with reduced response (HR -5 pts)', pts:-5, max:0, src:'comorbidity'});
+  if (htn) bd_eff.push({f:'Hypertension', v:'Minor penalty — complex metabolic milieu', pts:-2, max:0, src:'comorbidity'});
+  if (cvd) bd_eff.push({f:'CVD history', v:'Complex metabolic baseline', pts:-2, max:0, src:'comorbidity'});
+  if (ckd) bd_eff.push({f:'CKD', v:'May limit dose escalation, alters drug clearance', pts:-3, max:0, src:'comorbidity'});
+  if (hypo) bd_eff.push({f:'Hypothyroidism', v:'May blunt metabolic response', pts:-2, max:0, src:'comorbidity'});
+  if (pcos) bd_eff.push({f:'PCOS', v:'May slightly enhance response to weight reduction', pts:2, max:2, src:'comorbidity'});
+  if (bariatric) {
+    bd_eff.push({f:'Prior bariatric surgery', v:'Prior surgery may reduce additional GLP-1 efficacy', pts:-4, max:0, src:'comorbidity'});
+  }
+
+  if (gi_h) {
+    bd_gi.push({f:'GI disorder history', v:'IBS/GERD/gastroparesis — major risk factor', pts:18, max:18, src:'comorbidity'});
+    bd_vt.push({f:'GI disorder history', v:'Major vomiting risk factor', pts:14, max:14, src:'comorbidity'});
+  } else {
+    bd_gi.push({f:'GI disorder history', v:'None reported', pts:0, max:18, src:'comorbidity'});
+    bd_vt.push({f:'GI disorder history', v:'None reported', pts:0, max:14, src:'comorbidity'});
+  }
+  if (panc) {
+    bd_gi.push({f:'Prior pancreatitis', v:'Significant GI risk — pancreatitis recurrence risk', pts:12, max:12, src:'comorbidity'});
+    bd_vt.push({f:'Prior pancreatitis', v:'Significant risk', pts:8, max:8, src:'comorbidity'});
+  }
+  if (prev) {
+    bd_gi.push({f:'Prior GLP-1 use', v:'Pre-existing tolerance — reduces GI risk', pts:-5, max:0, src:'comorbidity'});
+    bd_vt.push({f:'Prior GLP-1 use', v:'Tolerance reduces vomiting risk', pts:-5, max:0, src:'comorbidity'});
+  } else {
+    bd_gi.push({f:'GLP-1 naive', v:'No prior GI tolerance established', pts:5, max:5, src:'comorbidity'});
+    bd_vt.push({f:'GLP-1 naive', v:'No prior tolerance', pts:4, max:4, src:'comorbidity'});
+  }
+
+  // ── BIOCHEMICAL ────────────────────────────
+  const hba1c = gv('hba1c'), glucose = gv('glucose');
+  const insulin = gv('insulin'), egfr = gv('egfr');
+  const alt = gv('alt'), ast = gv('ast'), ggt = gv('ggt');
+  const tg = gv('tg'), sbp = gv('sbp'), dbp = gv('dbp');
+  const crp = gv('crp'), tsh = gv('tsh'), vitd = gv('vitd');
+  const albumin = gv('albumin');
+
+  if (hba1c !== null) {
+    const hPts = hba1c<5.7?5:hba1c<6.5?3:hba1c<7.5?-2:hba1c<9?-5:-8;
+    const hLabel = hba1c<5.7?'Normal':hba1c<6.5?'Pre-diabetic':hba1c<7.5?'DM (controlled)':hba1c<9?'DM (suboptimal)':'DM (poor control)';
+    bd_eff.push({f:'HbA1c', v:`${hba1c}% — ${hLabel}`, pts:hPts, max:5, src:'biochemical'});
+  }
+
+  if (glucose !== null) {
+    const gPts = glucose<100?3:glucose<126?0:glucose<200?-3:-5;
+    const gLabel = glucose<100?'Normal':glucose<126?'Pre-diabetic':glucose<200?'Diabetic (moderate)':'Diabetic (severe)';
+    bd_eff.push({f:'Fasting glucose', v:`${glucose} mg/dL — ${gLabel}`, pts:gPts, max:3, src:'biochemical'});
+  }
+
+  // HOMA-IR
+  if (glucose !== null && insulin !== null && insulin > 0) {
+    const homa = ((insulin * glucose) / 405).toFixed(1);
+    const homaPts = homa<2.5?2:homa<5?0:homa<10?-2:-4;
+    bd_eff.push({f:'HOMA-IR (calculated)', v:`${homa} — ${homa<2.5?'Normal':homa<5?'Moderate IR':homa<10?'High IR':'Severe IR'}`, pts:homaPts, max:2, src:'biochemical'});
+  }
+
+  if (egfr !== null) {
+    const ePts = egfr>=90?2:egfr>=60?1:egfr>=30?-2:-5;
+    const eLabel = egfr>=90?'Normal (G1)':egfr>=60?'Mildly reduced (G2)':egfr>=30?'Moderate CKD (G3)':egfr>=15?'Severe CKD (G4)':'Kidney failure (G5)';
+    bd_eff.push({f:'eGFR', v:`${egfr} mL/min/1.73m² — ${eLabel}`, pts:ePts, max:2, src:'biochemical'});
+  }
+
+  const sexStr = gs('sex');
+  if (alt !== null) {
+    const uln = sexStr==='female'?35:40;
+    const aPts = alt<=uln?2:alt<=uln*2?-1:alt<=uln*3?-3:-5;
+    const aLabel = alt<=uln?'Normal':alt<=uln*2?'Mildly elevated':alt<=uln*3?'Moderately elevated':'Markedly elevated';
+    bd_eff.push({f:'ALT', v:`${alt} U/L — ${aLabel}`, pts:aPts, max:2, src:'biochemical'});
+    if (alt > uln*2) bd_gi.push({f:'ALT elevated (liver stress)', v:`${alt} U/L`, pts:4, max:4, src:'biochemical'});
+  }
+  if (ast !== null) {
+    const uln = sexStr==='female'?32:40;
+    if (ast > uln*2) bd_eff.push({f:'AST elevated', v:`${ast} U/L`, pts:-2, max:0, src:'biochemical'});
+  }
+  if (ggt !== null) {
+    const uln = sexStr==='female'?38:55;
+    if (ggt > uln*2) bd_gi.push({f:'GGT elevated (biliary/liver)', v:`${ggt} U/L`, pts:3, max:3, src:'biochemical'});
+  }
+  if (albumin !== null && albumin < 3.5) {
+    bd_eff.push({f:'Hypoalbuminemia', v:`${albumin} g/dL — impaired nutritional status`, pts:-3, max:0, src:'biochemical'});
+  }
+
+  if (tg !== null) {
+    if (tg >= 500) {
+      bd_gi.push({f:'Severe hypertriglyceridemia', v:`${tg} mg/dL — pancreatitis risk ≥500`, pts:10, max:10, src:'biochemical'});
+      bd_eff.push({f:'Triglycerides ≥500', v:`${tg} mg/dL — pancreatitis risk limits GLP-1 use`, pts:-4, max:0, src:'biochemical'});
+    } else if (tg >= 200) {
+      bd_gi.push({f:'Hypertriglyceridemia', v:`${tg} mg/dL`, pts:3, max:10, src:'biochemical'});
+    } else if (tg < 150) {
+      bd_eff.push({f:'Triglycerides normal', v:`${tg} mg/dL`, pts:1, max:1, src:'biochemical'});
+    }
+  }
+
+  if (sbp !== null) {
+    const bpPts = sbp<120?1:sbp<130?0:sbp<140?-1:sbp<160?-2:-3;
+    const bpLabel = sbp<120?'Normal':sbp<130?'Elevated':sbp<140?'Stage 1 HTN':sbp<160?'Stage 2 HTN':'Stage 3 HTN';
+    if (sbp >= 130) bd_eff.push({f:'Systolic BP', v:`${sbp} mmHg — ${bpLabel}`, pts:bpPts, max:0, src:'biochemical'});
+  }
+
+  if (crp !== null) {
+    const cPts = crp<1?2:crp<3?1:crp<10?-1:-3;
+    bd_eff.push({f:'hs-CRP (inflammation)', v:`${crp} mg/L — ${crp<1?'Low':crp<3?'Avg':crp<10?'High':'Very high'} CV risk`, pts:cPts, max:2, src:'biochemical'});
+    if (crp > 10) bd_gi.push({f:'Systemic inflammation (CRP >10)', v:`${crp} mg/L`, pts:4, max:4, src:'biochemical'});
+  }
+
+  if (tsh !== null) {
+    const tPts = tsh>=0.4&&tsh<=4?1:tsh>4?-2:-1;
+    bd_eff.push({f:'TSH', v:`${tsh} mIU/L — ${tsh>=0.4&&tsh<=4?'Euthyroid':tsh>4?'Hypothyroid (may impair response)':'Hyperthyroid'}`, pts:tPts, max:1, src:'biochemical'});
+  }
+
+  if (vitd !== null) {
+    const vPts = vitd>=30?1:vitd>=20?0:-1;
+    bd_eff.push({f:'Vitamin D', v:`${vitd} ng/mL — ${vitd>=30?'Sufficient':vitd>=20?'Insufficient':'Deficient (impairs metabolic response)'}`, pts:vPts, max:1, src:'biochemical'});
+  }
+
+  // ── COMPUTE TOTAL SCORES ──────────────────
+  const sumEff = bd_eff.reduce((s,b)=>s+b.pts,0);
+  const sumGI  = bd_gi.reduce((s,b)=>s+b.pts,0);
+  // interaction is already pushed into bd_vt above — do NOT add it again
+  const sumVT  = bd_vt.reduce((s,b)=>s+b.pts,0);
+
+  // Maximum possible raw scores (for normalization)
+  const maxEff = 20+12+8+8+6+7+3+9+3+5+3+2+2+2+2+1+1+1+1; // ~96
+  const maxGI  = 20+20+8+8+3+2+18+12+5+10+4+3+4;           // ~117
+  const maxVT  = 20+30+8+6+5+14+8+4+20;                     // ~115
+
+  const effScore = Math.max(0, Math.min(100, Math.round((Math.max(0,sumEff)/maxEff)*100)));
+  const giScore  = Math.max(0, Math.min(100, Math.round((Math.max(0,sumGI) /maxGI )*100)));
+  const vtScore  = drug==='tirzepatide' ? Math.max(0, Math.min(100, Math.round((Math.max(0,sumVT)/maxVT)*100))) : 0;
+
+  // ── EXPECTED OUTCOMES ─────────────────────
+  // Base rates from paper
+  let baseLoss = drug==='tirzepatide' ? 15.1 : 10.7;
+  if (n_eff !== null) baseLoss += n_eff * 0.64;
+  if (t2d) baseLoss -= 2.87;
+  if (sex==='male') baseLoss -= 2.2;
+  if (anc==='african') baseLoss -= 3;
+  if (anc==='latino') baseLoss -= 1.5;
+  if (nafld) baseLoss -= 1.5;
+  if (hypo) baseLoss -= 1;
+  baseLoss = Math.max(2, baseLoss);
+
+  const expectedKg = wp ? (wp * baseLoss / 100) : null;
+  const expectedBMI = bmi_pre ? (bmi_pre * baseLoss / 100) : null;
+
+  // Adjusted nausea/vomiting prevalence (base from paper: 25.1% nausea, 8.4% vomiting)
+  let adj_nausea = 25.1 * (1 + (giScore - 30) / 120);
+  adj_nausea = Math.max(6, Math.min(72, adj_nausea));
+  let adj_vomit = 8.4 * (1 + (vtScore - 20) / 100);
+  adj_vomit = Math.max(2, Math.min(55, adj_vomit));
+
+  return {
+    effScore, giScore, vtScore,
+    bd_eff, bd_gi, bd_vt,
+    sumEff, sumGI, sumVT, interaction,
+    baseLoss: baseLoss.toFixed(1),
+    expectedKg: expectedKg ? expectedKg.toFixed(1) : null,
+    expectedBMI: expectedBMI ? expectedBMI.toFixed(1) : null,
+    adj_nausea: adj_nausea.toFixed(0),
+    adj_vomit: adj_vomit.toFixed(0),
+    drug, n_eff, n_nausea, n_vomit, n_gipr,
+    weight_pre: wp, bmi_pre,
+    weight_now: wn,
+    // comorbidity/context flags — passed so recommendations() avoids re-reading the DOM
+    flag_t2d: t2d, flag_nafld: nafld, flag_ckd: ckd,
+    flag_pancreatitis: panc, flag_gi_history: gi_h,
+    anc
+  };
+}
+
+// ══════════════════════════════════════════════
+// RENDER RESULTS
+// ══════════════════════════════════════════════
+function scoreColor(score, invert) {
+  if (!invert) {
+    if (score>=75) return {bg:'#e8f5e9',text:'#1b5e20',label:'Excellent'};
+    if (score>=55) return {bg:'#e8f0fe',text:'#1a237e',label:'Good'};
+    if (score>=35) return {bg:'#fff8e1',text:'#e65100',label:'Moderate'};
+    return {bg:'#fce4ec',text:'#7f0000',label:'Poor'};
+  } else {
+    if (score>=65) return {bg:'#fce4ec',text:'#7f0000',label:'High Risk'};
+    if (score>=40) return {bg:'#fff3e0',text:'#bf360c',label:'Moderate Risk'};
+    if (score>=20) return {bg:'#fff8e1',text:'#e65100',label:'Low-Mod Risk'};
+    return {bg:'#e8f5e9',text:'#1b5e20',label:'Low Risk'};
+  }
+}
+
+function gaugeSVG(score, color, na) {
+  if (na) return `<svg class="gauge-svg" viewBox="0 0 110 75" width="100%" height="70"><text x="55" y="42" text-anchor="middle" font-size="13" fill="#bbb">N/A</text></svg>`;
+  const r=40, cx=55, cy=55, sw=10;
+  const circ = 2*Math.PI*r;
+  const arcLen = circ * 0.75;
+  const off = -(circ * 0.25);
+  const filled = arcLen * (score/100);
+  return `<svg class="gauge-svg" viewBox="0 0 110 75" width="100%" height="70">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#eee" stroke-width="${sw}" stroke-dasharray="${arcLen} ${circ-arcLen}" stroke-dashoffset="${off}" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${filled} ${circ-filled}" stroke-dashoffset="${off}" stroke-linecap="round"/>
+    <text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="22" font-weight="800" fill="${color}">${score}</text>
+  </svg>`;
+}
+
+function bkTable(rows) {
+  const html = rows.map(r => {
+    const cls = r.pts>0?'pts-pos':r.pts<0?'pts-neg':'pts-neu';
+    const sign = r.pts>0?'+':'';
+    const srcBadge = `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:${r.src==='genetic'?'#e8f0fe':r.src==='biochemical'?'#fff3e0':r.src==='anthro'?'#e8f5e9':'#f5f5f5'};color:${r.src==='genetic'?'#1a56db':r.src==='biochemical'?'#e65100':r.src==='anthro'?'#2e7d32':'#555'}">${r.src||''}</span>`;
+    return `<tr>
+      <td>${r.f} ${srcBadge}</td>
+      <td style="color:#555;font-size:11px">${r.v}${r.note?` <em style="color:#aaa">[${r.note}]</em>`:''}</td>
+      <td class="${cls}">${sign}${r.pts}</td>
+    </tr>`;
+  }).join('');
+  const total = rows.reduce((s,r)=>s+r.pts,0);
+  return `<div style="overflow-x:auto"><table class="bk-table"><thead><tr><th>Factor</th><th>Value / Detail</th><th style="text-align:right">Points</th></tr></thead><tbody>${html}<tr class="total-row"><td colspan="2">Raw score total</td><td style="text-align:right">${total>0?'+':''}${total}</td></tr></tbody></table></div>`;
+}
+
+function recommendations(s) {
+  const recs = [];
+
+  // Efficacy
+  if (s.effScore>=75) recs.push({t:'success',h:'Strong predicted efficacy',b:`Patient profile is highly favorable for ${s.drug}. Genetic, clinical, and biochemical factors indicate above-average predicted weight loss (~${s.baseLoss}% body weight). Continue current regimen and optimize lifestyle support.`});
+  else if (s.effScore>=55) recs.push({t:'info',h:'Moderate predicted efficacy',b:`Reasonable response expected, though below peak potential. Ensure dose is escalated to maximum tolerated over 4–5 months. ${s.drug==='tirzepatide'?'Tirzepatide offers modestly superior efficacy if tolerability allows.':''} Monitor at 3 and 6 months; reassess if <5% weight loss at 6 months.`});
+  else recs.push({t:'warn',h:'Below-average predicted efficacy',b:`Multiple factors reduce predicted response: ${s.flag_t2d?'T2D (-2.87 pp per paper data), ':''} ${s.flag_nafld?'NAFLD, ':''} ${s.flag_ckd?'CKD, ':''}. Consider specialist review, dose optimization, and combination approaches. Ensure adequate trial duration (≥12 months) before switching agents.`});
+
+  // GI
+  if (s.giScore>=60) recs.push({t:'alert',h:'High GI side effect risk',b:`Multiple factors indicate elevated nausea/vomiting risk. Recommended: (1) Very slow dose escalation (extend each dose step to 8 weeks). (2) Dietary counseling — small, low-fat, low-sugar meals. (3) Take injection at bedtime to reduce peak side effects. (4) Consider prophylactic antiemetics in first 4-8 weeks. (5) Avoid rapid escalation to maintenance dose.`});
+  else if (s.giScore>=35) recs.push({t:'warn',h:'Moderate GI risk',b:`Moderate risk of nausea/GI upset. Standard dose escalation with dietary counseling recommended. GI symptoms typically peak in weeks 2–8 and resolve with time. Advise patient on early self-management strategies.`});
+  else recs.push({t:'success',h:'Low GI risk',b:`Profile indicates low predicted GI side effect burden. Standard titration protocol is appropriate. Routine dietary counseling still recommended.`});
+
+  // GIPR tirzepatide specific
+  if (s.drug==='tirzepatide' && s.vtScore>=55) {
+    const genoNote = s.n_gipr===2?'Homozygous CC (p.Glu354Gln/Gln — loss of function)':s.n_gipr===1?'Heterozygous GC (partial loss of function)':'';
+    recs.push({t:'alert',h:'Elevated tirzepatide-specific vomiting risk',b:`GIPR variant detected (rs1800437 ${genoNote}). This partial loss-of-function in GIPR reduces the GIP component's ability to buffer GLP1-induced nausea/vomiting. If vomiting is severe/persistent, consider switching to semaglutide (pure GLP1 agonist, no GIPR component). The GIPR buffer effect is unique to tirzepatide.`});
+  }
+
+  // Genetic interaction
+  if (s.n_vomit===2 && s.n_gipr===2 && s.drug==='tirzepatide') {
+    recs.push({t:'alert',h:'⚠ Critical genetic interaction detected',b:`Patient is homozygous for risk alleles at BOTH GLP1R (rs11760106-TT) AND GIPR (rs1800437-CC). This combination is associated with 14.8× increased odds of tirzepatide-mediated vomiting (95% CI: 6.2–35.8, paper data). Strong recommendation: Consider semaglutide as first-line agent. If tirzepatide is preferred, implement extremely gradual titration (1 dose step every 12 weeks) with proactive antiemetic support and close monitoring.`});
+  }
+
+  // Efficacy allele
+  if (s.n_eff===2) recs.push({t:'success',h:'GLP1R efficacy variant: homozygous TT',b:`rs10305420 TT genotype — maximum genetic benefit for weight loss (~1.52 kg above CC population average, P=2.9×10⁻¹⁰). The leucine variant likely increases GLP1R surface abundance through enhanced signal peptide stability.`});
+  else if (s.n_eff===1) recs.push({t:'info',h:'GLP1R efficacy variant: heterozygous CT',b:`rs10305420 CT genotype — intermediate genetic benefit (~0.76 kg above CC). One copy of the T allele contributes additively to weight loss efficacy.`});
+  else if (s.n_eff===0) recs.push({t:'info',h:'GLP1R efficacy variant: CC (no genetic boost)',b:`rs10305420 CC genotype — no genetic boost. Weight loss is driven primarily by clinical factors (dose, duration, drug type, baseline BMI, T2D status). Standard expected efficacy for ${s.drug}.`});
+
+  // T2D note
+  if (s.flag_t2d) recs.push({t:'warn',h:'T2D diagnosis — efficacy adjustment',b:`Paper data: T2D is associated with −2.87 percentage points in BMI loss vs non-diabetic users (P=2.0×10⁻⁷³). However, GLP-1 medications remain highly effective for cardiometabolic risk reduction in T2D independent of weight loss magnitude. HbA1c and glucose control benefits may be primary goals.`});
+
+  // Pancreatitis
+  if (s.flag_pancreatitis) recs.push({t:'alert',h:'Prior pancreatitis — caution',b:`History of pancreatitis is a relative contraindication for GLP-1 medications. Combined with high TG (${gv('tg')? gv('tg')+' mg/dL':''}) if present, this significantly increases GI risk. Review with gastroenterologist before or alongside GLP-1 initiation.`});
+
+  // High TG
+  const tg = gv('tg');
+  if (tg !== null && tg >= 500) recs.push({t:'alert',h:'Severe hypertriglyceridemia ≥500 mg/dL',b:`TG ${tg} mg/dL — this is a major pancreatitis risk factor. GLP-1 therapy should only be initiated after TG control, as GLP-1-induced nausea/vomiting may worsen metabolic derangement. Consider fibrate therapy first.`});
+
+  // Renal
+  const egfr = gv('egfr');
+  if (egfr !== null && egfr < 30) recs.push({t:'warn',h:'Severe CKD (eGFR <30)',b:`eGFR ${egfr} mL/min/1.73m² — GLP-1 medications are generally considered safe in CKD, but dose escalation should be more gradual due to altered GI motility and fluid status. Monitor for dehydration during GI side effects.`});
+
+  // Ancestry
+  if (s.anc==='african') recs.push({t:'warn',h:'Ancestry consideration',b:`African ancestry is associated with lower average GLP-1 efficacy in population data (−10.6% non-European vs −12.1% European). The rs10305420 T (efficacy) allele is also least common in African populations (allele frequency ~7%). Ensure clinical response is individually monitored and dose escalated to maximum tolerated.`});
+
+  return recs.map(r=>`<div class="rec rec-${r.t}"><strong>${r.h}</strong>${r.b}</div>`).join('');
+}
+
+function renderResults(s) {
+  const eff = scoreColor(s.effScore, false);
+  const gi  = scoreColor(s.giScore, true);
+  const vt  = scoreColor(s.vtScore, true);
+
+  const actualLoss = (s.weight_pre && s.weight_now) ? (s.weight_pre - s.weight_now).toFixed(1) : null;
+  const actualPct = (s.weight_pre && s.weight_now) ? (((s.weight_pre - s.weight_now)/s.weight_pre)*100).toFixed(1) : null;
+
+  const bmi_now = (s.bmi_pre && actualPct) ? (s.bmi_pre * (1 - parseFloat(actualPct)/100)).toFixed(1) : null;
+
+  const html = `
+  <div class="card">
+    <div class="card-title"><span class="badge badge-results">Score</span> Risk & Efficacy Summary — ${s.drug.charAt(0).toUpperCase()+s.drug.slice(1)}</div>
+    <div class="score-grid">
+      <div class="score-card">
+        <div class="score-lbl">Predicted Efficacy</div>
+        <div class="gauge-wrap">${gaugeSVG(s.effScore, eff.text, false)}</div>
+        <div class="score-num" style="color:${eff.text}">${s.effScore}</div>
+        <span class="score-cat" style="background:${eff.bg};color:${eff.text}">${eff.label}</span>
+        <div class="score-sub">Weight loss potential</div>
+      </div>
+      <div class="score-card">
+        <div class="score-lbl">GI Side Effect Risk</div>
+        <div class="gauge-wrap">${gaugeSVG(s.giScore, gi.text, false)}</div>
+        <div class="score-num" style="color:${gi.text}">${s.giScore}</div>
+        <span class="score-cat" style="background:${gi.bg};color:${gi.text}">${gi.label}</span>
+        <div class="score-sub">Nausea / vomiting</div>
+      </div>
+      <div class="score-card">
+        <div class="score-lbl">Tirzepatide Vomiting Risk</div>
+        <div class="gauge-wrap">${gaugeSVG(s.drug==='tirzepatide'?s.vtScore:0, vt.text, s.drug!=='tirzepatide')}</div>
+        <div class="score-num" style="color:${s.drug==='tirzepatide'?vt.text:'#bbb'}">${s.drug==='tirzepatide'?s.vtScore:'—'}</div>
+        <span class="score-cat" style="background:${s.drug==='tirzepatide'?vt.bg:'#f5f5f5'};color:${s.drug==='tirzepatide'?vt.text:'#bbb'}">${s.drug==='tirzepatide'?vt.label:'N/A (semaglutide)'}</span>
+        <div class="score-sub">GIPR-specific (rs1800437)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-results">Outcome</span> Expected Outcomes</div>
+    <div class="outcome-grid">
+      <div class="outcome-box">
+        <div class="ol">Predicted weight loss</div>
+        <div class="ov">${s.baseLoss}%</div>
+        <div class="od">of pre-treatment body weight</div>
+      </div>
+      <div class="outcome-box">
+        <div class="ol">Estimated kg lost</div>
+        <div class="ov">${s.expectedKg ? s.expectedKg+' kg' : 'N/A'}</div>
+        <div class="od">at 8–12 months (enter weight for calc)</div>
+      </div>
+      <div class="outcome-box">
+        <div class="ol">Predicted BMI reduction</div>
+        <div class="ov">${s.expectedBMI ? '−'+s.expectedBMI+' kg/m²' : 'N/A'}</div>
+        <div class="od">${s.bmi_pre ? 'From '+s.bmi_pre.toFixed(1)+' kg/m²' : 'Enter height/weight'}</div>
+      </div>
+      <div class="outcome-box">
+        <div class="ol">Nausea likelihood</div>
+        <div class="ov" style="color:${parseInt(s.adj_nausea)>40?'#c62828':'#1a1a1a'}">${s.adj_nausea}%</div>
+        <div class="od">moderate/severe (pop. base 25.1%)</div>
+      </div>
+      <div class="outcome-box">
+        <div class="ol">Vomiting likelihood</div>
+        <div class="ov" style="color:${parseInt(s.adj_vomit)>20?'#c62828':'#1a1a1a'}">${s.adj_vomit}%</div>
+        <div class="od">moderate/severe (pop. base 8.4%)</div>
+      </div>
+      ${actualLoss ? `<div class="outcome-box outcome-actual">
+        <div class="ol">Actual weight change (reported)</div>
+        <div class="ov" style="color:#2e7d32">−${actualLoss} kg (${actualPct}%)</div>
+        <div class="od">vs predicted ${s.baseLoss}% · ${parseFloat(actualPct)>=parseFloat(s.baseLoss)?'Above prediction ↑':'Below prediction ↓'}</div>
+      </div>` : ''}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-results">Recs</span> Clinical Recommendations</div>
+    ${recommendations(s)}
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-genetics">Breakdown</span> Efficacy Score Breakdown (${s.sumEff} raw → ${s.effScore}/100)</div>
+    ${bkTable(s.bd_eff)}
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-lab">Breakdown</span> GI Risk Score Breakdown (${s.sumGI} raw → ${s.giScore}/100)</div>
+    ${bkTable(s.bd_gi)}
+  </div>
+
+  ${s.drug==='tirzepatide'?`<div class="card">
+    <div class="card-title"><span class="badge badge-lab" style="background:#fce4ec;color:#c62828">Breakdown</span> Tirzepatide Vomiting Risk Breakdown (${s.sumVT+s.interaction} raw → ${s.vtScore}/100)</div>
+    ${bkTable(s.bd_vt)}
+    ${s.interaction>0?`<div style="margin-top:10px;font-size:11px;background:#fce4ec;border-radius:6px;padding:8px 12px;color:#7f0000">⚠ Interaction bonus: +${s.interaction} pts — GLP1R × GIPR double homozygous risk (14.8× OR per paper)</div>`:''}
+  </div>`:''}
+
+  <div class="btn-row">
+    <button class="btn-s" onclick="window.print()">🖨 Print Report</button>
+    <button class="btn-s" onclick="goTo(0)">← Edit Inputs</button>
+    <button class="btn-p" onclick="calculate()">↻ Recalculate</button>
+  </div>
+
+  <div class="disclaimer">
+    <strong>Research & Educational Use Only.</strong> This calculator is based on: Su et al. (2026, Nature) — GWAS of 27,885 GLP-1 users from 23andMe (received Oct 2025, accepted Feb 2026). Genetic effect sizes are modest: genetics explains ~4% of variance; non-genetic factors ~21%; substantial unexplained variance remains. Scores are composite indices for illustrative purposes. Population base rates (nausea 25.1%, vomiting 8.4%, loss of appetite 58.9%) are from the paper's Extended Data Table 1. Expected weight loss is adjusted from paper medians (semaglutide −10.7% BMI; tirzepatide −15.1% BMI). rs10305420 effect: −0.641% BMI per T allele (95% CI −1.27 to −0.34 kg). GIPR interaction OR: 14.8 (95% CI 6.2–35.8). This tool does not constitute medical advice. All clinical decisions require qualified clinician assessment.
+  </div>`;
+
+  document.getElementById('resultsContent').innerHTML = html;
+}
+
+// Init
+selectDrug('semaglutide');
+</script>
+</body>
+</html>

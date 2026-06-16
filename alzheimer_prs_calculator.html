@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroRisk · Alzheimer's PRS Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060912;
+    --panel: #0d1120;
+    --panel2: #111827;
+    --border: #1e2d4a;
+    --border2: #243352;
+    --cyan: #00e5ff;
+    --cyan-dim: #007a8a;
+    --amber: #ffb300;
+    --amber-dim: #7a5500;
+    --green: #00e676;
+    --red: #ff4444;
+    --purple: #b388ff;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --text-mid: #94a3b8;
+    --low: #00e676;
+    --mild: #ffeb3b;
+    --moderate: #ff9800;
+    --high: #f44336;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BACKGROUND GRID */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* HEADER */
+  header {
+    padding: 40px 24px 32px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .logo-top {
+    font-family: 'Orbitron', monospace;
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--cyan);
+    text-shadow: 0 0 30px rgba(0,229,255,0.4);
+  }
+  .logo-top span { color: var(--amber); }
+  .logo-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .header-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: right;
+    line-height: 1.8;
+  }
+  .header-meta span { color: var(--cyan); }
+
+  /* SECTIONS */
+  section {
+    margin-top: 36px;
+  }
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* UPLOAD PANELS */
+  .upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) { .upload-grid { grid-template-columns: 1fr; } }
+
+  .upload-box {
+    background: var(--panel);
+    border: 1px dashed var(--border2);
+    border-radius: 12px;
+    padding: 28px 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan-dim), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .upload-box:hover { border-color: var(--cyan); border-style: solid; }
+  .upload-box:hover::before { opacity: 1; }
+  .upload-box.loaded { border-color: var(--green); border-style: solid; }
+  .upload-box.loaded::before { background: linear-gradient(90deg, transparent, var(--green), transparent); opacity: 1; }
+
+  .upload-icon { font-size: 32px; margin-bottom: 12px; }
+  .upload-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .upload-hint {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .upload-status {
+    margin-top: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--green);
+    display: none;
+  }
+  .upload-status.visible { display: block; }
+  input[type="file"] { display: none; }
+
+  .tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+  .tag-ref { background: rgba(0,229,255,0.1); color: var(--cyan); border: 1px solid var(--cyan-dim); }
+  .tag-input { background: rgba(255,179,0,0.1); color: var(--amber); border: 1px solid var(--amber-dim); }
+
+  /* SAMPLE DATA */
+  .sample-notice {
+    background: rgba(0,229,255,0.04);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--text-mid);
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .sample-notice em { color: var(--cyan); font-style: normal; }
+
+  /* BUTTONS */
+  .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+  .btn {
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .btn-primary {
+    background: var(--cyan);
+    color: #000;
+  }
+  .btn-primary:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,229,255,0.3); }
+  .btn-primary:disabled { background: var(--border2); color: var(--text-dim); cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+  }
+  .btn-ghost:hover { background: rgba(0,229,255,0.08); }
+  .btn-sample {
+    background: transparent;
+    color: var(--amber);
+    border: 1px solid var(--amber-dim);
+    font-size: 11px;
+  }
+  .btn-sample:hover { background: rgba(255,179,0,0.08); border-color: var(--amber); }
+
+  /* PROGRESS */
+  #progress-section { display: none; }
+  .progress-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  .progress-step {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 0;
+    font-size: 13px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    transition: color 0.3s;
+  }
+  .progress-step:last-child { border-bottom: none; }
+  .progress-step.active { color: var(--cyan); }
+  .progress-step.done { color: var(--green); }
+  .step-icon {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    width: 24px;
+    text-align: center;
+  }
+  .progress-bar-wrap {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 20px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--purple));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+    width: 0%;
+  }
+
+  /* RESULTS */
+  #results-section { display: none; }
+
+  /* SCORE GAUGE */
+  .score-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 36px;
+    align-items: center;
+  }
+  @media (max-width: 700px) { .score-panel { grid-template-columns: 1fr; } }
+
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .gauge-svg { width: 220px; height: 140px; overflow: visible; }
+
+  .score-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 42px;
+    font-weight: 900;
+    text-align: center;
+    line-height: 1;
+  }
+  .score-label-small {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: center;
+    letter-spacing: 2px;
+  }
+  .risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  .score-info { display: flex; flex-direction: column; gap: 18px; }
+  .score-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .score-stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .score-stat-val {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .score-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .mini-stat {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .mini-stat-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .mini-stat-lbl {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-top: 3px;
+  }
+
+  /* INTERPRETATION */
+  .interp-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-top: 16px;
+  }
+  .interp-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .interp-text {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text-mid);
+  }
+  .interp-text strong { color: var(--text); }
+  .interp-text .highlight-cyan { color: var(--cyan); }
+  .interp-text .highlight-amber { color: var(--amber); }
+  .interp-text .highlight-red { color: var(--red); }
+  .interp-text .highlight-green { color: var(--green); }
+
+  /* REASONS LIST */
+  .reasons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .reason-item {
+    background: var(--panel2);
+    border-left: 3px solid var(--border);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-mid);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .reason-item.risk { border-left-color: var(--red); }
+  .reason-item.protective { border-left-color: var(--green); }
+  .reason-item.neutral { border-left-color: var(--cyan); }
+  .reason-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .reason-content strong { display: block; font-size: 12px; color: var(--text); margin-bottom: 2px; }
+
+  /* SNP TABLE */
+  .snp-table-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .table-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .table-header h3 {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-mid);
+    text-transform: uppercase;
+  }
+  .table-filters { display: flex; gap: 8px; }
+  .filter-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text-dim);
+    transition: all 0.15s;
+  }
+  .filter-btn.active, .filter-btn:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(0,229,255,0.06); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    background: var(--panel2);
+  }
+  td {
+    font-size: 12px;
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(30,45,74,0.5);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(0,229,255,0.025); }
+  .td-mono { font-family: 'Space Mono', monospace; font-size: 11px; }
+  .td-rsid { color: var(--cyan); }
+  .td-gene { color: var(--purple); font-family: 'Space Mono', monospace; font-size: 11px; }
+  .td-geno { 
+    font-family: 'Space Mono', monospace;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    display: inline-block;
+    font-size: 11px;
+  }
+  .geno-risk { border-color: var(--red) !important; color: var(--red) !important; }
+  .geno-het { border-color: var(--amber) !important; color: var(--amber) !important; }
+  .geno-ref { border-color: var(--green) !important; color: var(--green) !important; }
+
+  .contrib-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+  }
+  .bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+  .bar-pos { background: linear-gradient(90deg, var(--amber), var(--red)); }
+  .bar-neg { background: linear-gradient(90deg, var(--cyan), var(--green)); }
+  .bar-num { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--text-dim); min-width: 44px; text-align: right; }
+
+  .pval { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--text-dim); }
+  .pval.sig { color: var(--amber); }
+
+  .dir-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+  }
+  .dir-up { background: rgba(244,67,54,0.15); color: var(--red); }
+  .dir-down { background: rgba(0,230,118,0.15); color: var(--green); }
+
+  /* GENE BREAKDOWN */
+  .gene-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .gene-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+  .gene-card:hover { border-color: var(--border2); }
+  .gene-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--purple);
+    margin-bottom: 6px;
+  }
+  .gene-snps { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+  .gene-score-row { display: flex; align-items: center; gap: 8px; }
+  .gene-score-bar { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .gene-score-fill { height: 100%; border-radius: 2px; }
+
+  /* DISCLAIMER */
+  .disclaimer {
+    background: rgba(255,179,0,0.05);
+    border: 1px solid rgba(255,179,0,0.2);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin-top: 24px;
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .disclaimer-icon { font-size: 20px; flex-shrink: 0; }
+  .disclaimer strong { color: var(--amber); }
+
+  /* ERROR */
+  .error-box {
+    background: rgba(244,67,54,0.06);
+    border: 1px solid rgba(244,67,54,0.3);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--red);
+    display: none;
+    margin-top: 12px;
+    font-family: 'Space Mono', monospace;
+  }
+  .error-box.visible { display: block; }
+
+  /* ANIMATIONS */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .fade-in { animation: fadeIn 0.4s ease forwards; }
+  .pulsing { animation: pulse 1.2s infinite; }
+
+  .scrollable-table { overflow-x: auto; }
+  .sort-indicator { cursor: pointer; user-select: none; }
+  .sort-indicator::after { content: ' ↕'; font-size: 8px; opacity: 0.4; }
+  .sort-asc::after { content: ' ↑'; opacity: 1; }
+  .sort-desc::after { content: ' ↓'; opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-top">NEURO<span>RISK</span></div>
+    <div class="logo-sub">Polygenic Risk Score · Alzheimer's Disease</div>
+  </div>
+  <div class="header-meta">
+    Reference: <span>GWAS Catalog · MONDO:0004975</span><br>
+    Method: <span>Weighted Beta PRS</span><br>
+    Build: <span>GRCh38</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- UPLOAD SECTION -->
+  <section id="upload-section">
+    <div class="section-label">01 · Input Data</div>
+
+    <div class="upload-grid">
+      <!-- GWAS Reference -->
+      <div class="upload-box" id="gwas-box" onclick="document.getElementById('gwas-file').click()">
+        <div class="upload-icon">🧬</div>
+        <div class="upload-title">GWAS Catalog Reference</div>
+        <div class="upload-hint">TSV file from GWAS Catalog<br>Fields: riskAllele, beta, pValue, mappedGenes…</div>
+        <div class="tag tag-ref">Reference · TSV</div>
+        <div class="upload-status" id="gwas-status"></div>
+        <input type="file" id="gwas-file" accept=".tsv,.txt,.csv" onchange="handleGwasFile(this)">
+      </div>
+
+      <!-- Patient Genome -->
+      <div class="upload-box" id="genome-box" onclick="document.getElementById('genome-file').click()">
+        <div class="upload-icon">🔬</div>
+        <div class="upload-title">Patient Genome File</div>
+        <div class="upload-hint">23andMe .txt format, or VCF (.vcf)<br>rsID + genotype per SNP</div>
+        <div class="tag tag-input">Input · 23andMe / VCF</div>
+        <div class="upload-status" id="genome-status"></div>
+        <input type="file" id="genome-file" accept=".txt,.vcf,.tsv,.csv" onchange="handleGenomeFile(this)">
+      </div>
+    </div>
+
+    <div class="sample-notice">
+      <span>Don't have files ready? Load <em>synthetic demo data</em> to explore the tool.</span>
+      <button class="btn btn-sample" onclick="loadSampleData()">⚡ Load Demo Data</button>
+    </div>
+
+    <div class="error-box" id="error-box"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="calc-btn" onclick="runCalculation()" disabled>Calculate PRS ›</button>
+      <button class="btn btn-ghost" onclick="resetAll()">Reset</button>
+    </div>
+  </section>
+
+  <!-- PROGRESS SECTION -->
+  <section id="progress-section">
+    <div class="section-label">02 · Processing</div>
+    <div class="progress-wrap">
+      <div class="progress-step" id="step-parse-gwas">
+        <div class="step-icon">○</div>
+        <div>Parsing GWAS catalog — extracting SNPs, betas, genes…</div>
+      </div>
+      <div class="progress-step" id="step-parse-genome">
+        <div class="step-icon">○</div>
+        <div>Parsing genome file — detecting format (23andMe / VCF)…</div>
+      </div>
+      <div class="progress-step" id="step-match">
+        <div class="step-icon">○</div>
+        <div>Matching SNPs — finding common rsIDs…</div>
+      </div>
+      <div class="progress-step" id="step-prs">
+        <div class="step-icon">○</div>
+        <div>Calculating weighted PRS — dosage × beta…</div>
+      </div>
+      <div class="progress-step" id="step-classify">
+        <div class="step-icon">○</div>
+        <div>Classifying risk — normalising score…</div>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS SECTION -->
+  <section id="results-section">
+    <div class="section-label">03 · Risk Assessment</div>
+
+    <!-- SCORE PANEL -->
+    <div class="score-panel fade-in">
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" id="gauge-svg" viewBox="0 0 220 140">
+          <!-- Track -->
+          <path d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="#1e2d4a" stroke-width="14" stroke-linecap="round"/>
+          <!-- Fill -->
+          <path id="gauge-fill" d="M 20 120 A 90 90 0 0 1 200 120" fill="none" stroke="#00e5ff" stroke-width="14" stroke-linecap="round"
+            stroke-dasharray="283" stroke-dashoffset="283"/>
+          <!-- Tick marks -->
+          <line x1="20" y1="120" x2="28" y2="120" stroke="#1e2d4a" stroke-width="2"/>
+          <line x1="200" y1="120" x2="192" y2="120" stroke="#1e2d4a" stroke-width="2"/>
+          <!-- Labels -->
+          <text x="14" y="136" fill="#64748b" font-size="10" font-family="Space Mono">0</text>
+          <text x="194" y="136" fill="#64748b" font-size="10" font-family="Space Mono">100</text>
+          <!-- Needle -->
+          <g id="gauge-needle" transform="rotate(-90, 110, 120)">
+            <line x1="110" y1="120" x2="110" y2="38" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+            <circle cx="110" cy="120" r="5" fill="white" opacity="0.9"/>
+          </g>
+        </svg>
+        <div class="score-val" id="score-display">--</div>
+        <div class="score-label-small">PRS SCORE (0–100)</div>
+        <div class="risk-badge" id="risk-badge">—</div>
+      </div>
+
+      <div class="score-info">
+        <div class="score-grid">
+          <div class="mini-stat">
+            <div class="mini-stat-num" id="stat-total">—</div>
+            <div class="mini-stat-lbl">GWAS SNPs Loaded</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-num" id="stat-matched" style="color:var(--cyan)">—</div>
+            <div class="mini-stat-lbl">Matched SNPs</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-num" id="stat-risk-snps" style="color:var(--red)">—</div>
+            <div class="mini-stat-lbl">Risk-contributing</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-num" id="stat-prot-snps" style="color:var(--green)">—</div>
+            <div class="mini-stat-lbl">Protective</div>
+          </div>
+        </div>
+        <div class="score-stat">
+          <div class="score-stat-label">Raw PRS (β-weighted)</div>
+          <div class="score-stat-val" id="raw-prs-val">—</div>
+        </div>
+        <div class="score-stat">
+          <div class="score-stat-label">Coverage of Reference Panel</div>
+          <div class="score-stat-val" id="coverage-val">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INTERPRETATION -->
+    <div class="interp-panel fade-in" id="interp-panel">
+      <div class="interp-title">Clinical Interpretation</div>
+      <div class="interp-text" id="interp-text"></div>
+      <div class="reasons" id="reasons-list"></div>
+    </div>
+
+    <!-- TOP SNPs TABLE -->
+    <section style="margin-top:32px">
+      <div class="section-label">Matched SNP Detail</div>
+      <div class="snp-table-wrap fade-in">
+        <div class="table-header">
+          <h3>SNPs Found in Sample · <span id="snp-count-label" style="color:var(--cyan)">0</span> matches</h3>
+          <div class="table-filters">
+            <button class="filter-btn active" onclick="filterTable('all', this)">All</button>
+            <button class="filter-btn" onclick="filterTable('risk', this)">Risk ↑</button>
+            <button class="filter-btn" onclick="filterTable('protective', this)">Protective ↓</button>
+            <button class="filter-btn" onclick="filterTable('apoe', this)">APOE</button>
+          </div>
+        </div>
+        <div class="scrollable-table">
+          <table id="snp-table">
+            <thead>
+              <tr>
+                <th class="sort-indicator" onclick="sortTable('rsid')">rsID</th>
+                <th>Gene(s)</th>
+                <th>Risk Allele</th>
+                <th>Genotype</th>
+                <th>Dosage</th>
+                <th class="sort-indicator" onclick="sortTable('contrib')">Contribution</th>
+                <th class="sort-indicator" onclick="sortTable('pval')">p-value</th>
+                <th>Direction</th>
+              </tr>
+            </thead>
+            <tbody id="snp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- GENE BREAKDOWN -->
+    <section style="margin-top:32px">
+      <div class="section-label">Gene-Level Breakdown</div>
+      <div class="gene-cards fade-in" id="gene-cards"></div>
+    </section>
+
+    <!-- DISCLAIMER -->
+    <div class="disclaimer">
+      <div class="disclaimer-icon">⚠️</div>
+      <div>
+        <strong>Research & Educational Use Only.</strong> This tool calculates a Polygenic Risk Score based on GWAS summary statistics. PRS does not diagnose Alzheimer's disease or predict individual outcomes. Genetic risk is one factor among many; lifestyle, environment, and clinical history are equally important. 
+        Always consult a qualified clinical geneticist or neurologist for medical interpretation. This tool is not a substitute for professional medical advice.
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:24px">
+      <button class="btn btn-ghost" onclick="resetAll()">← New Analysis</button>
+      <button class="btn btn-sample" onclick="exportReport()">⬇ Export Report</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────────────────
+let gwasData = null;      // parsed GWAS map: rsid → {riskAllele, beta, direction, genes, pValue, trait}
+let genomeData = null;    // parsed genome map: rsid → genotype string
+let resultsData = null;   // final results
+let allSnpRows = [];      // for table filtering
+let sortState = { col: 'contrib', dir: 'desc' };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILE HANDLING
+// ─────────────────────────────────────────────────────────────────────────────
+function handleGwasFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      gwasData = parseGWAS(e.target.result);
+      const box = document.getElementById('gwas-box');
+      box.classList.add('loaded');
+      const st = document.getElementById('gwas-status');
+      st.textContent = `✓ Loaded ${Object.keys(gwasData).length.toLocaleString()} SNP associations`;
+      st.classList.add('visible');
+      checkReady();
+    } catch(err) { showError('GWAS parse error: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+function handleGenomeFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const res = parseGenome(e.target.result);
+      genomeData = res.data;
+      const box = document.getElementById('genome-box');
+      box.classList.add('loaded');
+      const st = document.getElementById('genome-status');
+      st.textContent = `✓ ${res.format} · ${Object.keys(genomeData).length.toLocaleString()} genotypes`;
+      st.classList.add('visible');
+      checkReady();
+    } catch(err) { showError('Genome parse error: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+function checkReady() {
+  document.getElementById('calc-btn').disabled = !(gwasData && genomeData);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PARSERS
+// ─────────────────────────────────────────────────────────────────────────────
+function parseGWAS(text) {
+  const lines = text.split('\n');
+  const result = {};
+  
+  // Detect header
+  let start = 0;
+  const headers = lines[0].split('\t').map(h => h.replace(/"/g,'').trim());
+  const idx = {
+    riskAllele: headers.indexOf('riskAllele'),
+    pValue: headers.indexOf('pValue'),
+    beta: headers.indexOf('beta'),
+    orValue: headers.indexOf('orValue'),
+    mappedGenes: headers.indexOf('mappedGenes'),
+    traitName: headers.indexOf('traitName'),
+    locations: headers.indexOf('locations'),
+    pubmedId: headers.indexOf('pubmedId')
+  };
+  start = 1;
+
+  for (let i = start; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const cols = parseTsvLine(line);
+    
+    const riskAlleleRaw = (cols[idx.riskAllele] || '').replace(/"/g, '').trim();
+    if (!riskAlleleRaw) continue;
+    
+    // Extract rsID and risk allele: e.g. "rs769449-A" → rsid=rs769449, allele=A
+    const dashIdx = riskAlleleRaw.lastIndexOf('-');
+    if (dashIdx < 0) continue;
+    const rsid = riskAlleleRaw.slice(0, dashIdx).toLowerCase();
+    const riskAllele = riskAlleleRaw.slice(dashIdx + 1);
+    
+    if (!rsid.startsWith('rs')) continue;
+    
+    // Parse beta
+    const betaRaw = (cols[idx.beta] || '').replace(/"/g, '').trim();
+    let betaVal = 0, direction = 'unknown';
+    const betaMatch = betaRaw.match(/([\d.]+)\s+unit\s+(increase|decrease)/i);
+    if (betaMatch) {
+      betaVal = parseFloat(betaMatch[1]);
+      direction = betaMatch[2].toLowerCase();
+    }
+    
+    // pValue
+    const pValRaw = (cols[idx.pValue] || '').replace(/"/g,'').trim();
+    let pVal = parseFloat(pValRaw) || 1;
+    
+    // Genes
+    const genes = (cols[idx.mappedGenes] || '').replace(/"/g,'').trim();
+    const trait = (cols[idx.traitName] || '').replace(/"/g,'').trim();
+    const location = (cols[idx.locations] || '').replace(/"/g,'').trim();
+    
+    if (!betaVal) continue; // skip if no effect size
+    
+    // Keep strongest association per rsid
+    if (!result[rsid] || pVal < result[rsid].pValue) {
+      result[rsid] = { riskAllele, betaVal, direction, genes, pValue: pVal, trait, location };
+    }
+  }
+  
+  if (Object.keys(result).length === 0) throw new Error('No valid SNP associations parsed. Check file format.');
+  return result;
+}
+
+function parseTsvLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQuote = !inQuote; }
+    else if (c === '\t' && !inQuote) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseGenome(text) {
+  const lines = text.split('\n');
+  const data = {};
+  let format = 'Unknown';
+  
+  // Detect format
+  const isVCF = lines.some(l => l.startsWith('##fileformat=VCF') || l.startsWith('#CHROM'));
+  const is23 = lines.some(l => l.includes('# This data file') || l.includes('# rsid'));
+  
+  if (isVCF) {
+    format = 'VCF';
+    let gtCol = -1;
+    for (const line of lines) {
+      if (line.startsWith('##')) continue;
+      if (line.startsWith('#CHROM')) {
+        const cols = line.slice(1).split('\t');
+        const fmtCol = cols.indexOf('FORMAT');
+        // GT is the first field in FORMAT; sample is after FORMAT
+        gtCol = fmtCol + 1; // sample column
+        continue;
+      }
+      const cols = line.split('\t');
+      if (cols.length < 5) continue;
+      const rsid = (cols[2] || '').toLowerCase();
+      if (!rsid.startsWith('rs')) continue;
+      const ref = cols[3] || '';
+      const alt = cols[4] || '';
+      const fmtStr = cols[8] || '';
+      const sampleStr = cols[9] || cols[gtCol] || '';
+      
+      // Parse GT
+      const fmtFields = fmtStr.split(':');
+      const sampleFields = sampleStr.split(':');
+      const gtIdx = fmtFields.indexOf('GT');
+      const gt = sampleFields[gtIdx >= 0 ? gtIdx : 0] || '';
+      
+      // Convert GT to allele string
+      const alleles = [ref, ...alt.split(',')];
+      const gtParts = gt.replace('|', '/').split('/');
+      const genotype = gtParts.map(g => alleles[parseInt(g)] || g).join('');
+      if (genotype) data[rsid] = genotype.toUpperCase();
+    }
+  } else {
+    // 23andMe or generic rsid/genotype format
+    format = '23andMe';
+    for (const line of lines) {
+      if (line.startsWith('#')) continue;
+      const cols = line.trim().split(/\s+/);
+      if (cols.length < 4) continue;
+      const rsid = cols[0].toLowerCase();
+      if (!rsid.startsWith('rs')) continue;
+      const genotype = cols[3].toUpperCase();
+      if (genotype && /^[ACGT-]{1,2}$/.test(genotype)) {
+        data[rsid] = genotype;
+      }
+    }
+  }
+  
+  if (Object.keys(data).length === 0) throw new Error('No genotypes parsed. Check file format.');
+  return { data, format };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SAMPLE DATA
+// ─────────────────────────────────────────────────────────────────────────────
+function loadSampleData() {
+  // Simulate sample GWAS data using known Alzheimer's SNPs
+  gwasData = {
+    'rs769449':  { riskAllele:'A', betaVal:0.844, direction:'increase', genes:'APOE',    pValue:3e-15, trait:'Alzheimer\'s disease', location:'19:44906745' },
+    'rs429358':  { riskAllele:'C', betaVal:0.920, direction:'increase', genes:'APOE',    pValue:1e-200, trait:'Alzheimer\'s disease', location:'19:44908684' },
+    'rs7412':    { riskAllele:'T', betaVal:0.650, direction:'decrease', genes:'APOE',    pValue:1e-50, trait:'Alzheimer\'s disease', location:'19:44908822' },
+    'rs9331896': { riskAllele:'C', betaVal:0.145, direction:'decrease', genes:'CLU',     pValue:8.5e-10, trait:'Alzheimer\'s disease', location:'8:27542950' },
+    'rs3818361': { riskAllele:'G', betaVal:0.155, direction:'increase', genes:'CR1',     pValue:3.7e-9, trait:'Alzheimer\'s disease', location:'1:207703937' },
+    'rs744373':  { riskAllele:'G', betaVal:0.148, direction:'increase', genes:'BIN1',    pValue:1.6e-11, trait:'Alzheimer\'s disease', location:'2:127892810' },
+    'rs3851179': { riskAllele:'T', betaVal:0.137, direction:'decrease', genes:'PICALM',  pValue:2.0e-9, trait:'Alzheimer\'s disease', location:'11:85867875' },
+    'rs11136000':{ riskAllele:'T', betaVal:0.150, direction:'decrease', genes:'CLU',     pValue:1.4e-9, trait:'Alzheimer\'s disease', location:'8:27467686' },
+    'rs4938933': { riskAllele:'A', betaVal:0.120, direction:'increase', genes:'MS4A6A',  pValue:1.7e-8, trait:'Alzheimer\'s disease', location:'11:60021948' },
+    'rs3764650': { riskAllele:'T', betaVal:0.185, direction:'increase', genes:'ABCA7',   pValue:4.5e-17, trait:'Alzheimer\'s disease', location:'19:1056527' },
+    'rs10948363':{ riskAllele:'G', betaVal:0.139, direction:'increase', genes:'CD2AP',   pValue:8.0e-9, trait:'Alzheimer\'s disease', location:'6:47487762' },
+    'rs3865444': { riskAllele:'C', betaVal:0.180, direction:'decrease', genes:'CD33',    pValue:1.6e-9, trait:'Alzheimer\'s disease', location:'19:51727962' },
+    'rs670139':  { riskAllele:'T', betaVal:0.142, direction:'decrease', genes:'MS4A4E',  pValue:4.3e-8, trait:'Alzheimer\'s disease', location:'11:60145706' },
+    'rs9271192': { riskAllele:'A', betaVal:0.230, direction:'increase', genes:'HLA-DRB5',pValue:2.4e-14, trait:'Alzheimer\'s disease', location:'6:32620805' },
+    'rs10792832':{ riskAllele:'A', betaVal:0.160, direction:'decrease', genes:'PICALM',  pValue:1.1e-8, trait:'Alzheimer\'s disease', location:'11:85867875' },
+    'rs17125944':{ riskAllele:'C', betaVal:0.215, direction:'increase', genes:'FERMT2',  pValue:1.1e-8, trait:'Alzheimer\'s disease', location:'14:53400629' },
+    'rs8093731': { riskAllele:'T', betaVal:0.167, direction:'increase', genes:'INPP5D',  pValue:9.8e-9, trait:'Alzheimer\'s disease', location:'2:233956497' },
+    'rs35349669':{ riskAllele:'T', betaVal:0.195, direction:'increase', genes:'INPP5D',  pValue:1.0e-8, trait:'Alzheimer\'s disease', location:'2:233949904' },
+    'rs190982':  { riskAllele:'A', betaVal:0.143, direction:'decrease', genes:'MEF2C',   pValue:1.8e-8, trait:'Alzheimer\'s disease', location:'5:88888987' },
+    'rs2718058': { riskAllele:'G', betaVal:0.107, direction:'decrease', genes:'NME8',    pValue:1.1e-8, trait:'Alzheimer\'s disease', location:'7:37779444' },
+    'rs28834970':{ riskAllele:'C', betaVal:0.130, direction:'increase', genes:'PTK2B',   pValue:2.8e-9, trait:'Alzheimer\'s disease', location:'8:27635741' },
+    'rs9349407': { riskAllele:'C', betaVal:0.110, direction:'increase', genes:'CD2AP',   pValue:8.0e-9, trait:'Alzheimer\'s disease', location:'6:47487762' },
+    'rs1476679': { riskAllele:'C', betaVal:0.142, direction:'decrease', genes:'ZCWPW1',  pValue:1.4e-8, trait:'Alzheimer\'s disease', location:'7:100004446' },
+    'rs11218343':{ riskAllele:'C', betaVal:0.304, direction:'decrease', genes:'SORL1',   pValue:9.9e-14, trait:'Alzheimer\'s disease', location:'11:121343970' },
+    'rs10498633':{ riskAllele:'T', betaVal:0.175, direction:'decrease', genes:'SLC24A4', pValue:6.0e-10, trait:'Alzheimer\'s disease', location:'14:92460599' },
+  };
+
+  // Generate synthetic 23andMe genome with realistic heterozygosity
+  // Mix of risk, het, and protective genotypes for demo
+  const sampleGenotypes = {
+    'rs769449':  'AG',  // APOE het (1 risk allele) — moderate risk
+    'rs429358':  'CT',  // APOE het (1 risk allele) — ε3/ε4 carrier
+    'rs7412':    'CC',  // APOE (no protective T) — adds risk
+    'rs9331896': 'TC',  // CLU het (1 protective C)
+    'rs3818361': 'AG',  // CR1 het (1 risk G)
+    'rs744373':  'AG',  // BIN1 het (1 risk G)
+    'rs3851179': 'TT',  // PICALM hom protective
+    'rs11136000':'TC',  // CLU het protective
+    'rs4938933': 'AA',  // MS4A6A hom risk
+    'rs3764650': 'GT',  // ABCA7 het risk
+    'rs10948363':'GG',  // CD2AP hom risk
+    'rs3865444': 'AC',  // CD33 het protective
+    'rs670139':  'CT',  // MS4A4E het protective
+    'rs9271192': 'AG',  // HLA-DRB5 het risk
+    'rs10792832':'AG',  // PICALM het
+    'rs17125944':'CC',  // FERMT2 hom risk
+    'rs8093731': 'AT',  // INPP5D het risk
+    'rs35349669':'GG',  // INPP5D no risk T
+    'rs190982':  'AA',  // MEF2C hom protective
+    'rs2718058': 'GG',  // NME8 hom protective
+    'rs28834970':'CC',  // PTK2B hom risk
+    'rs9349407': 'CC',  // CD2AP hom risk
+    'rs1476679': 'TC',  // ZCWPW1 het
+    'rs11218343':'CC',  // SORL1 hom protective
+    'rs10498633':'AT',  // SLC24A4 het protective
+  };
+
+  genomeData = {};
+  Object.entries(sampleGenotypes).forEach(([k,v]) => genomeData[k] = v);
+
+  // Show status
+  document.getElementById('gwas-box').classList.add('loaded');
+  document.getElementById('gwas-status').textContent = `✓ Demo: ${Object.keys(gwasData).length} curated Alzheimer's SNPs`;
+  document.getElementById('gwas-status').classList.add('visible');
+
+  document.getElementById('genome-box').classList.add('loaded');
+  document.getElementById('genome-status').textContent = `✓ Synthetic genome · ${Object.keys(genomeData).length} genotypes`;
+  document.getElementById('genome-status').classList.add('visible');
+
+  checkReady();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALCULATION ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
+async function runCalculation() {
+  document.getElementById('error-box').classList.remove('visible');
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('progress-section').style.display = 'block';
+
+  const steps = ['step-parse-gwas','step-parse-genome','step-match','step-prs','step-classify'];
+  const pcts = [20, 40, 60, 80, 100];
+  
+  async function advance(stepId, pct) {
+    const el = document.getElementById(stepId);
+    el.querySelector('.step-icon').textContent = '◉';
+    el.classList.add('active');
+    document.getElementById('progress-bar').style.width = pct + '%';
+    await delay(320);
+    el.querySelector('.step-icon').textContent = '✓';
+    el.classList.remove('active');
+    el.classList.add('done');
+    await delay(120);
+  }
+
+  await delay(200);
+  await advance('step-parse-gwas', 20);   // already done at upload
+  await advance('step-parse-genome', 40);
+
+  // MATCHING
+  const matched = [];
+  const gwasKeys = Object.keys(gwasData);
+  let totalGwasSNPs = gwasKeys.length;
+  
+  for (const rsid of gwasKeys) {
+    const geno = genomeData[rsid];
+    if (geno) {
+      const snp = gwasData[rsid];
+      const dosage = countAllele(geno, snp.riskAllele);
+      const signedBeta = snp.direction === 'increase' ? snp.betaVal : -snp.betaVal;
+      const contrib = dosage * signedBeta;
+      matched.push({ rsid, ...snp, genotype: geno, dosage, signedBeta, contrib });
+    }
+  }
+  await advance('step-match', 60);
+
+  // PRS CALCULATION
+  let rawPRS = 0;
+  let maxPRS = 0;
+  let minPRS = 0;
+  
+  for (const s of matched) {
+    rawPRS += s.contrib;
+    if (s.signedBeta > 0) maxPRS += 2 * s.signedBeta;  // max possible risk
+    if (s.signedBeta < 0) minPRS += 2 * s.signedBeta;  // max possible protection
+  }
+  
+  // Also compute max from all GWAS SNPs (not just matched)
+  let maxPossibleAll = 0;
+  let minPossibleAll = 0;
+  for (const s of Object.values(gwasData)) {
+    const sb = s.direction === 'increase' ? s.betaVal : -s.betaVal;
+    if (sb > 0) maxPossibleAll += 2 * sb;
+    else minPossibleAll += 2 * sb;
+  }
+  
+  await advance('step-prs', 80);
+
+  // NORMALISE to 0-100 using matched SNPs range
+  const range = maxPRS - minPRS;
+  const normalised = range > 0 ? ((rawPRS - minPRS) / range) * 100 : 50;
+  const score = Math.max(0, Math.min(100, normalised));
+
+  // Risk allele contributing SNPs
+  const riskContrib = matched.filter(s => s.contrib > 0);
+  const protContrib = matched.filter(s => s.contrib < 0);
+
+  // CLASSIFY
+  let riskLevel, riskColor;
+  if (score < 30) { riskLevel = 'LOW'; riskColor = 'var(--low)'; }
+  else if (score < 50) { riskLevel = 'MILD'; riskColor = 'var(--mild)'; }
+  else if (score < 70) { riskLevel = 'MODERATE'; riskColor = 'var(--moderate)'; }
+  else { riskLevel = 'HIGH'; riskColor = 'var(--high)'; }
+
+  await advance('step-classify', 100);
+  await delay(400);
+
+  resultsData = {
+    score, rawPRS, maxPRS, minPRS, riskLevel, riskColor,
+    matched, riskContrib, protContrib,
+    totalGwasSNPs, coverage: (matched.length / totalGwasSNPs * 100)
+  };
+
+  allSnpRows = [...matched];
+  
+  showResults(resultsData);
+}
+
+function countAllele(genotype, allele) {
+  // Count how many times allele appears in genotype
+  let count = 0;
+  for (const c of genotype.toUpperCase()) {
+    if (c === allele.toUpperCase()) count++;
+  }
+  return Math.min(count, 2); // cap at 2 for diploid
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DISPLAY RESULTS
+// ─────────────────────────────────────────────────────────────────────────────
+function showResults(d) {
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('results-section').style.display = 'block';
+
+  // GAUGE
+  animateGauge(d.score, d.riskColor);
+
+  // Score value
+  animateNumber('score-display', d.score, 1, d.riskColor);
+
+  // Risk badge
+  const badge = document.getElementById('risk-badge');
+  badge.textContent = d.riskLevel;
+  badge.style.background = d.riskColor + '22';
+  badge.style.color = d.riskColor;
+  badge.style.border = `1px solid ${d.riskColor}`;
+
+  // Stats
+  document.getElementById('stat-total').textContent = d.totalGwasSNPs.toLocaleString();
+  document.getElementById('stat-matched').textContent = d.matched.length;
+  document.getElementById('stat-risk-snps').textContent = d.riskContrib.length;
+  document.getElementById('stat-prot-snps').textContent = d.protContrib.length;
+  document.getElementById('raw-prs-val').textContent = d.rawPRS.toFixed(4) + ' β-units';
+  document.getElementById('coverage-val').textContent = d.coverage.toFixed(2) + '%  (' + d.matched.length + ' / ' + d.totalGwasSNPs.toLocaleString() + ' SNPs)';
+  document.getElementById('snp-count-label').textContent = d.matched.length;
+
+  // Interpretation
+  buildInterpretation(d);
+
+  // Table
+  renderTable(d.matched);
+
+  // Genes
+  renderGenes(d.matched);
+
+  // Scroll to results
+  setTimeout(() => document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' }), 100);
+}
+
+function animateGauge(score, color) {
+  // Arc path: from -90deg to +90deg = 180deg sweep
+  // dash-array = π × r = π × 90 ≈ 283
+  const total = 283;
+  const offset = total - (score / 100) * total;
+  const fill = document.getElementById('gauge-fill');
+  fill.style.stroke = color;
+  fill.style.strokeDashoffset = offset;
+  fill.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)';
+
+  // Needle: maps 0-100 to -90deg to +90deg = 180deg total
+  const angle = -90 + (score / 100) * 180;
+  const needle = document.getElementById('gauge-needle');
+  needle.style.transform = `rotate(${angle}deg)`;
+  needle.style.transformOrigin = '110px 120px';
+  needle.style.transition = 'transform 1.2s cubic-bezier(0.4,0,0.2,1)';
+}
+
+function animateNumber(id, target, decimals, color) {
+  const el = document.getElementById(id);
+  const start = 0;
+  const duration = 1000;
+  const startTime = performance.now();
+  el.style.color = color;
+  function frame(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    el.textContent = (start + (target - start) * ease).toFixed(decimals);
+    if (t < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function buildInterpretation(d) {
+  const { score, riskLevel, matched, riskContrib, protContrib } = d;
+  
+  // Find APOE status
+  const apoeSnps = matched.filter(s => s.genes.includes('APOE'));
+  const hasAPOE4 = apoeSnps.some(s => s.dosage > 0 && s.direction === 'increase');
+  const apoeHomE4 = apoeSnps.some(s => s.dosage >= 2 && s.direction === 'increase' && s.rsid === 'rs429358');
+  
+  const topRisk = [...riskContrib].sort((a,b) => b.contrib - a.contrib).slice(0, 3);
+  const topProt = [...protContrib].sort((a,b) => a.contrib - b.contrib).slice(0, 3);
+  
+  let interp = '';
+  let reasonItems = [];
+
+  if (riskLevel === 'LOW') {
+    interp = `Based on <strong>${matched.length} matched SNPs</strong> from the GWAS reference panel, this sample shows a <span class="highlight-green">LOW genetic risk profile</span> for Alzheimer's disease. The weighted polygenic score (${d.score.toFixed(1)}/100) falls in the lower quartile of the risk distribution derived from the matched variants. Most risk-associated alleles are absent or offset by protective variants.`;
+  } else if (riskLevel === 'MILD') {
+    interp = `With a PRS of <strong>${d.score.toFixed(1)}/100</strong>, this sample shows a <span class="highlight-amber">MILD elevation</span> in Alzheimer's genetic risk. Across ${matched.length} matched SNPs, more risk-contributing alleles are present than average, though the aggregate effect remains below the moderate-risk threshold. Regular monitoring and lifestyle interventions may be relevant.`;
+  } else if (riskLevel === 'MODERATE') {
+    interp = `The calculated PRS of <strong>${d.score.toFixed(1)}/100</strong> indicates a <span class="highlight-amber" style="color:var(--moderate)">MODERATE genetic risk</span> for Alzheimer's disease. The cumulative effect of ${riskContrib.length} risk-contributing SNPs across the genome significantly outweighs the protective variants detected. Clinical genetics consultation is advisable.`;
+  } else {
+    interp = `A PRS of <strong>${d.score.toFixed(1)}/100</strong> places this sample in the <span class="highlight-red">HIGH genetic risk category</span> for Alzheimer's disease. The aggregate burden of ${riskContrib.length} risk-contributing SNPs, combined with key high-impact loci, represents a substantially elevated polygenic risk. This does not constitute a diagnosis — clinical genetic counselling is strongly recommended.`;
+  }
+
+  document.getElementById('interp-text').innerHTML = interp;
+
+  // Build reasons
+  if (hasAPOE4) {
+    reasonItems.push({
+      type: 'risk',
+      icon: '🔴',
+      title: apoeHomE4 ? 'APOE ε4/ε4 Homozygous (Very High Impact)' : 'APOE ε4 Carrier (High Impact)',
+      text: apoeHomE4
+        ? 'Homozygous APOE ε4 is the strongest known genetic risk factor for late-onset AD, associated with 8-12× increased risk and earlier onset (~10 years earlier on average).'
+        : 'Carrying one APOE ε4 allele increases Alzheimer\'s risk approximately 3-4×. APOE ε4 is present in ~25% of the general population but ~65% of Alzheimer\'s patients.'
+    });
+  }
+
+  if (topRisk.length > 0) {
+    const topGenes = [...new Set(topRisk.map(s => s.genes.split(',')[0]))].slice(0,3).join(', ');
+    reasonItems.push({
+      type: 'risk',
+      icon: '⬆️',
+      title: `${riskContrib.length} risk-increasing SNPs detected`,
+      text: `Top contributing genes: ${topGenes}. These variants individually carry small effects but cumulatively elevate risk. Weighted beta sum from risk alleles: +${d.riskContrib.reduce((a,s)=>a+s.contrib,0).toFixed(3)}.`
+    });
+  }
+
+  if (topProt.length > 0) {
+    const protGenes = [...new Set(topProt.map(s => s.genes.split(',')[0]))].slice(0,3).join(', ');
+    reasonItems.push({
+      type: 'protective',
+      icon: '🟢',
+      title: `${protContrib.length} protective variants present`,
+      text: `Protective alleles found in: ${protGenes}. These variants reduce polygenic risk. Protective beta contribution: ${d.protContrib.reduce((a,s)=>a+s.contrib,0).toFixed(3)}.`
+    });
+  }
+
+  // SORL1 special mention
+  const sorl1 = matched.find(s => s.genes.includes('SORL1') && s.dosage > 0);
+  if (sorl1) {
+    reasonItems.push({
+      type: sorl1.direction === 'increase' ? 'risk' : 'protective',
+      icon: sorl1.direction === 'increase' ? '⚠️' : '✅',
+      title: `SORL1 variant detected (${sorl1.rsid})`,
+      text: `SORL1 encodes a sorting receptor involved in APP processing. Variants here affect amyloid-β production and intracellular trafficking of APP.`
+    });
+  }
+
+  reasonItems.push({
+    type: 'neutral',
+    icon: 'ℹ️',
+    title: `Coverage: ${d.coverage.toFixed(1)}% of reference panel matched`,
+    text: `${d.matched.length} out of ${d.totalGwasSNPs.toLocaleString()} reference SNPs were found in the input genome. Higher coverage improves PRS accuracy. A minimum of 100+ matched SNPs is generally considered adequate for population-level inference.`
+  });
+
+  const reasonsEl = document.getElementById('reasons-list');
+  reasonsEl.innerHTML = reasonItems.map(r => `
+    <div class="reason-item ${r.type}">
+      <div class="reason-icon">${r.icon}</div>
+      <div class="reason-content">
+        <strong>${r.title}</strong>
+        ${r.text}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TABLE
+// ─────────────────────────────────────────────────────────────────────────────
+function renderTable(rows) {
+  const sorted = sortRows(rows, sortState.col, sortState.dir);
+  const maxContrib = Math.max(...rows.map(r => Math.abs(r.contrib)));
+  
+  const tbody = document.getElementById('snp-tbody');
+  tbody.innerHTML = sorted.map(s => {
+    const genoClass = s.dosage === 2 ? 'geno-risk' : s.dosage === 1 ? 'geno-het' : 'geno-ref';
+    const barPct = maxContrib > 0 ? (Math.abs(s.contrib) / maxContrib * 100) : 0;
+    const barClass = s.contrib > 0 ? 'bar-pos' : 'bar-neg';
+    const isRisk = s.direction === 'increase';
+    const pValStr = s.pValue < 1e-4 ? s.pValue.toExponential(1) : s.pValue.toFixed(5);
+    const pSig = s.pValue < 1e-7 ? 'sig' : '';
+    
+    return `
+      <tr data-dir="${s.contrib > 0 ? 'risk' : 'protective'}" data-gene="${s.genes}">
+        <td class="td-mono td-rsid">${s.rsid}</td>
+        <td class="td-gene">${s.genes.split(',').slice(0,2).join(', ')}</td>
+        <td class="td-mono" style="color:var(--amber)">${s.riskAllele}</td>
+        <td><span class="td-geno ${genoClass}">${s.genotype}</span></td>
+        <td class="td-mono" style="color:${s.dosage===2?'var(--red)':s.dosage===1?'var(--amber)':'var(--green)'}">${s.dosage}</td>
+        <td>
+          <div class="contrib-bar">
+            <div class="bar-track"><div class="bar-fill ${barClass}" style="width:${barPct}%"></div></div>
+            <span class="bar-num">${s.contrib > 0 ? '+' : ''}${s.contrib.toFixed(3)}</span>
+          </div>
+        </td>
+        <td class="pval ${pSig}">${pValStr}</td>
+        <td><span class="dir-badge ${isRisk?'dir-up':'dir-down'}">${isRisk?'RISK ↑':'PROT ↓'}</span></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function sortRows(rows, col, dir) {
+  const sorted = [...rows].sort((a, b) => {
+    let av, bv;
+    if (col === 'rsid') { av = a.rsid; bv = b.rsid; }
+    else if (col === 'contrib') { av = Math.abs(a.contrib); bv = Math.abs(b.contrib); }
+    else if (col === 'pval') { av = a.pValue; bv = b.pValue; }
+    else return 0;
+    if (av < bv) return dir === 'asc' ? -1 : 1;
+    if (av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return sorted;
+}
+
+function sortTable(col) {
+  if (sortState.col === col) sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+  else { sortState.col = col; sortState.dir = 'desc'; }
+  // Update header indicators
+  document.querySelectorAll('.sort-indicator').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+  });
+  renderTable(getCurrentFilteredRows());
+}
+
+let currentFilter = 'all';
+function getCurrentFilteredRows() {
+  return filterRows(allSnpRows, currentFilter);
+}
+
+function filterRows(rows, filter) {
+  if (filter === 'all') return rows;
+  if (filter === 'risk') return rows.filter(r => r.contrib > 0);
+  if (filter === 'protective') return rows.filter(r => r.contrib < 0);
+  if (filter === 'apoe') return rows.filter(r => r.genes.includes('APOE'));
+  return rows;
+}
+
+function filterTable(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = filterRows(allSnpRows, filter);
+  renderTable(filtered);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GENE BREAKDOWN
+// ─────────────────────────────────────────────────────────────────────────────
+function renderGenes(matched) {
+  const geneMap = {};
+  for (const s of matched) {
+    const mainGene = s.genes.split(',')[0].trim();
+    if (!geneMap[mainGene]) geneMap[mainGene] = { snps: 0, totalContrib: 0 };
+    geneMap[mainGene].snps++;
+    geneMap[mainGene].totalContrib += s.contrib;
+  }
+  
+  const sorted = Object.entries(geneMap)
+    .sort((a,b) => Math.abs(b[1].totalContrib) - Math.abs(a[1].totalContrib))
+    .slice(0, 12);
+
+  const maxAbs = Math.max(...sorted.map(([,v]) => Math.abs(v.totalContrib)));
+  
+  const container = document.getElementById('gene-cards');
+  container.innerHTML = sorted.map(([gene, data]) => {
+    const pct = maxAbs > 0 ? (Math.abs(data.totalContrib) / maxAbs * 100) : 0;
+    const color = data.totalContrib > 0 ? 'var(--red)' : 'var(--green)';
+    const trend = data.totalContrib > 0 ? '↑' : '↓';
+    const contrib = data.totalContrib;
+    
+    return `
+      <div class="gene-card">
+        <div class="gene-name">${gene}</div>
+        <div class="gene-snps">${data.snps} SNP${data.snps > 1 ? 's' : ''} matched</div>
+        <div class="gene-score-row">
+          <div class="gene-score-bar">
+            <div class="gene-score-fill" style="width:${pct}%; background:${color}; height:100%"></div>
+          </div>
+          <span style="font-family:'Space Mono',monospace;font-size:10px;color:${color};min-width:54px;text-align:right">
+            ${trend}${Math.abs(contrib).toFixed(3)}
+          </span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────────────────────────────────────────
+function exportReport() {
+  if (!resultsData) return;
+  const d = resultsData;
+  const lines = [
+    '# ALZHEIMER\'S PRS REPORT — NeuroRisk',
+    `# Generated: ${new Date().toISOString()}`,
+    '',
+    `PRS Score (0-100): ${d.score.toFixed(2)}`,
+    `Risk Level: ${d.riskLevel}`,
+    `Raw PRS: ${d.rawPRS.toFixed(4)}`,
+    `Matched SNPs: ${d.matched.length} / ${d.totalGwasSNPs}`,
+    `Coverage: ${d.coverage.toFixed(2)}%`,
+    '',
+    'rsid\tgene\trisk_allele\tgenotype\tdosage\tcontribution\tp_value\tdirection',
+    ...d.matched.sort((a,b) => Math.abs(b.contrib) - Math.abs(a.contrib))
+      .map(s => `${s.rsid}\t${s.genes}\t${s.riskAllele}\t${s.genotype}\t${s.dosage}\t${s.contrib.toFixed(4)}\t${s.pValue}\t${s.direction}`)
+  ];
+  
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'prs_report.txt';
+  a.click();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RESET
+// ─────────────────────────────────────────────────────────────────────────────
+function resetAll() {
+  gwasData = null; genomeData = null; resultsData = null; allSnpRows = [];
+  document.getElementById('upload-section').style.display = '';
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('gwas-box').classList.remove('loaded');
+  document.getElementById('genome-box').classList.remove('loaded');
+  document.getElementById('gwas-status').classList.remove('visible');
+  document.getElementById('genome-status').classList.remove('visible');
+  document.getElementById('gwas-file').value = '';
+  document.getElementById('genome-file').value = '';
+  document.getElementById('calc-btn').disabled = true;
+  document.getElementById('error-box').classList.remove('visible');
+  // Reset progress steps
+  document.querySelectorAll('.progress-step').forEach(s => {
+    s.classList.remove('active','done');
+    s.querySelector('.step-icon').textContent = '○';
+  });
+  document.getElementById('progress-bar').style.width = '0%';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('visible');
+}
+</script>
+</body>
+</html>
